@@ -4,13 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
 
-var goalStepsDefault = 12000;
-var goalSteps = 12000;
+int goalStepsDefault = 12000;
+int goalSteps = 12000;
 
-_updateGoalSteps() async {
+Future<dynamic> _pullGoalStepsFromPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  final steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
-  print("steps=$steps");
+  int steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
   return steps;
 }
 
@@ -27,7 +26,7 @@ class MyApp extends StatelessWidget {
 class StepsPerHourState extends State<StepsPerHour> {
   final _biggerFont = const TextStyle(fontSize: 18.0);
 
-  Widget _buildStepsPerHour() {
+  Widget _buildStepsPerHour(int goalSteps) {
     var hour = clock.now().hour;
     var entries = <String>[];
 
@@ -96,23 +95,37 @@ class StepsPerHourState extends State<StepsPerHour> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Steps Per Hour'),
-          actions: <Widget>[
-            IconButton(
-                icon: Icon(Icons.refresh),
-                onPressed: () async {
-                  final steps = await _updateGoalSteps().then((steps) {
-                    return steps;
-                  });
-                  setState(() {
-                    goalSteps = steps;
-                  });
-                }),
-          ],
-        ),
-        body: _buildStepsPerHour());
+    return FutureBuilder<dynamic>(
+      future: _pullGoalStepsFromPreferences(),
+      builder: (context, AsyncSnapshot<dynamic> snapshot) {
+        if (snapshot.hasData) {
+          return Scaffold(
+              appBar: AppBar(
+                title: Text('Steps Per Hour'),
+                actions: <Widget>[
+                  IconButton(
+                    icon: Icon(Icons.restore),
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      prefs.setInt('goalsteps', goalStepsDefault);
+                      setState(() {
+                        goalSteps = goalStepsDefault;
+                      });
+                    },
+                  ),
+                  IconButton(
+                      icon: Icon(Icons.refresh),
+                      onPressed: () {
+                        setState(() {});
+                      }),
+                ],
+              ),
+              body: _buildStepsPerHour(snapshot.data));
+        } else {
+          return CircularProgressIndicator();
+        }
+      },
+    );
   }
 }
 
