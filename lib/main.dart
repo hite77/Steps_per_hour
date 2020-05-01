@@ -1,7 +1,18 @@
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
+
+var goalStepsDefault = 12000;
+var goalSteps = 12000;
+
+_updateGoalSteps() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  final steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
+  print("steps=$steps");
+  return steps;
+}
 
 class MyApp extends StatelessWidget {
   @override
@@ -15,12 +26,12 @@ class MyApp extends StatelessWidget {
 
 class StepsPerHourState extends State<StepsPerHour> {
   final _biggerFont = const TextStyle(fontSize: 18.0);
-  var goalsteps = 12000;
 
   Widget _buildStepsPerHour() {
     var hour = clock.now().hour;
     var entries = <String>[];
-    var increase = (goalsteps / 14).floor();
+
+    var increase = (goalSteps / 14).floor();
     if (hour <= 7) entries.add("7  -->   $increase steps");
     if (hour <= 8) entries.add("8  -->   ${increase * 2} steps");
     if (hour <= 9) entries.add("9  -->   ${increase * 3} steps");
@@ -34,7 +45,7 @@ class StepsPerHourState extends State<StepsPerHour> {
     if (hour <= 17) entries.add("5  -->  ${increase * 11} steps");
     if (hour <= 18) entries.add("6  -->  ${increase * 12} steps");
     if (hour <= 19) entries.add("7  -->  ${increase * 13} steps");
-    if (hour <= 20) entries.add("8  --> $goalsteps steps");
+    if (hour <= 20) entries.add("8  --> $goalSteps steps");
     return ListView.builder(
         padding: const EdgeInsets.all(2.0),
         itemBuilder: (context, i) {
@@ -43,22 +54,26 @@ class StepsPerHourState extends State<StepsPerHour> {
               children: <Widget>[
                 IconButton(
                     icon: Icon(Icons.arrow_upward),
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
-                        goalsteps += 1000;
+                        goalSteps += 1000;
                       });
+                      final prefs = await SharedPreferences.getInstance();
+                      prefs.setInt('goalsteps', goalSteps);
                     }),
                 Expanded(
                   child: Center(
-                    child: Text("$goalsteps"),
+                    child: Text("$goalSteps"),
                   ),
                 ),
                 IconButton(
                     icon: Icon(Icons.arrow_downward),
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
-                        goalsteps -= 1000;
+                        goalSteps -= 1000;
                       });
+                      final prefs = await SharedPreferences.getInstance();
+                      prefs.setInt('goalsteps', goalSteps);
                     }),
               ],
             );
@@ -87,8 +102,13 @@ class StepsPerHourState extends State<StepsPerHour> {
           actions: <Widget>[
             IconButton(
                 icon: Icon(Icons.refresh),
-                onPressed: () {
-                  setState(() {});
+                onPressed: () async {
+                  final steps = await _updateGoalSteps().then((steps) {
+                    return steps;
+                  });
+                  setState(() {
+                    goalSteps = steps;
+                  });
                 }),
           ],
         ),
