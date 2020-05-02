@@ -7,6 +7,11 @@ void main() => runApp(MyApp());
 int goalStepsDefault = 12000;
 int goalSteps = 12000;
 
+_write_steps(int steps) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  prefs.setInt('goalsteps', steps);
+}
+
 Future<dynamic> _pullGoalStepsFromPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
@@ -57,8 +62,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                       setState(() {
                         goalSteps += 1000;
                       });
-                      final prefs = await SharedPreferences.getInstance();
-                      prefs.setInt('goalsteps', goalSteps);
+                      _write_steps(goalSteps);
                     }),
                 Expanded(
                   child: Center(
@@ -71,8 +75,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                       setState(() {
                         goalSteps -= 1000;
                       });
-                      final prefs = await SharedPreferences.getInstance();
-                      prefs.setInt('goalsteps', goalSteps);
+                      _write_steps(goalSteps);
                     }),
               ],
             );
@@ -106,8 +109,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      prefs.setInt('goalsteps', goalStepsDefault);
+                      _write_steps(goalStepsDefault);
                       setState(() {
                         goalSteps = goalStepsDefault;
                       });
