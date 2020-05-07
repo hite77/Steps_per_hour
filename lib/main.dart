@@ -56,51 +56,49 @@ class StepsPerHourState extends State<StepsPerHour> {
     if (hour <= 18) entries.add("6  -->  ${increase * 12 + offset} steps");
     if (hour <= 19) entries.add("7  -->  ${increase * 13 + offset} steps");
     if (hour <= 20) entries.add("8  --> ${goalSteps + offset} steps");
-    return ListView.builder(
-        padding: const EdgeInsets.all(2.0),
-        itemBuilder: (context, i) {
-          if (i == 0) {
-            return Row(
-              children: <Widget>[
-                IconButton(
-                    icon: Icon(Icons.arrow_upward),
-                    onPressed: () async {
-                      setState(() {
-                        if (stepGoalMode) {
-                          goalSteps += 1000;
-                        } else {
-                          offset += 100;
-                        }
-                      });
-                      _write_settings(goalSteps, offset);
-                    }),
-                Expanded(
-                  child: Center(
-                    child: Text((stepGoalMode)
-                        ? "Goal:$goalSteps Offset:$offset"
-                        : "Offset:$offset Goal:$goalSteps"),
-                  ),
-                ),
-                IconButton(
-                    icon: Icon(Icons.arrow_downward),
-                    onPressed: () async {
-                      setState(() {
-                        if (stepGoalMode) {
-                          goalSteps -= 1000;
-                        } else {
-                          offset -= 100;
-                        }
-                      });
-                      _write_settings(goalSteps, offset);
-                    }),
-              ],
-            );
-          }
-          if (i <= entries.length) {
-            return _buildRow(entries[i - 1]);
-          } else
-            return ListTile();
-        });
+
+    List<Widget> entriesList = [];
+    entriesList.add(_headerRow());
+    entries.map((item) => entriesList.add(_buildRow(item))).toList();
+    return ListView(children: entriesList);
+  }
+
+  Widget _headerRow() {
+    return Row(
+      children: <Widget>[
+        IconButton(
+            icon: Icon(Icons.arrow_upward),
+            onPressed: () async {
+              setState(() {
+                if (stepGoalMode) {
+                  goalSteps += 1000;
+                } else {
+                  offset += 100;
+                }
+              });
+              _write_settings(goalSteps, offset);
+            }),
+        Expanded(
+          child: Center(
+            child: Text((stepGoalMode)
+                ? "Goal:$goalSteps Offset:$offset"
+                : "Offset:$offset Goal:$goalSteps"),
+          ),
+        ),
+        IconButton(
+            icon: Icon(Icons.arrow_downward),
+            onPressed: () async {
+              setState(() {
+                if (stepGoalMode) {
+                  goalSteps -= 1000;
+                } else {
+                  offset -= 100;
+                }
+              });
+              _write_settings(goalSteps, offset);
+            }),
+      ],
+    );
   }
 
   Widget _buildRow(String text) {
