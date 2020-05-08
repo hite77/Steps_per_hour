@@ -9,6 +9,17 @@ int goalSteps = 12000;
 int offset = 0;
 bool stepGoalMode = true;
 
+roundDecimal(int unroundedSteps) {
+  final lastNumber = unroundedSteps % 10;
+  if (lastNumber == 0 || lastNumber == 5) {
+    return unroundedSteps;
+  } else if (lastNumber < 5) {
+    return (unroundedSteps - lastNumber + 5);
+  } else {
+    return (unroundedSteps - lastNumber + 10);
+  }
+}
+
 _write_settings(int steps, int offset) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   prefs.setInt('goalsteps', steps);
@@ -41,7 +52,7 @@ class StepsPerHourState extends State<StepsPerHour> {
     var hour = clock.now().hour;
     var entries = <String>[];
 
-    var increase = (goalSteps / 14).floor();
+    var increase = roundDecimal((goalSteps / 14).floor());
     if (hour <= 7) entries.add("7  -->   ${increase + offset} steps");
     if (hour <= 8) entries.add("8  -->   ${increase * 2 + offset} steps");
     if (hour <= 9) entries.add("9  -->   ${increase * 3 + offset} steps");
