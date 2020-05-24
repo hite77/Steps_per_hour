@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
@@ -8,6 +13,7 @@ int goalStepsDefault = 12000;
 int goalSteps = 12000;
 int offset = 0;
 bool stepGoalMode = true;
+int currentSteps = 0;
 
 roundDecimal(int unroundedSteps) {
   final lastNumber = unroundedSteps % 10;
@@ -18,6 +24,52 @@ roundDecimal(int unroundedSteps) {
   } else {
     return (unroundedSteps - lastNumber + 10);
   }
+}
+
+class Secret {
+  final String clientId;
+  Secret({this.clientId = ""});
+  factory Secret.fromJson(Map<String, dynamic> jsonMap) {
+    return new Secret(clientId: jsonMap["client_id"]);
+  }
+}
+
+class SecretLoader {
+  final String secretPath;
+
+  SecretLoader({this.secretPath});
+  Future<Secret> load() {
+    return rootBundle.loadStructuredData<Secret>(this.secretPath,
+        (jsonStr) async {
+      final secret = Secret.fromJson(json.decode(jsonStr));
+      return secret;
+    });
+  }
+}
+
+Future<int> getSteps() async {
+  final callbackUrlScheme = 'com.test.app://oauth2redirect';
+  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
+
+  final url = Uri.https('www.fitbit.com', '/oauth2/authorize', {
+    'response_type': 'token',
+    'client_id': secret.clientId,
+    'redirect_uri': '$callbackUrlScheme',
+    'scope': 'activity',
+  });
+
+// Present the dialog to the user
+  final result = await FlutterWebAuth.authenticate(
+      url: Uri.decodeComponent(url.toString()),
+      callbackUrlScheme: 'com.test.app');
+
+  final token = result.split('#access_token=')[1].split('&user_id')[0];
+
+  final activity = await http.get(
+      'https://api.fitbit.com/1/user/-/activities/date/today.json',
+      headers: {'Authorization': 'Bearer ' + token});
+  final steps = jsonDecode(activity.body)['summary']['steps'];
+  return steps;
 }
 
 _write_settings(int steps, int offset) async {
@@ -47,8 +99,8 @@ class StepsPerHourState extends State<StepsPerHour> {
   final _biggerFont = const TextStyle(fontSize: 18.0);
 
   Widget _buildStepsPerHour(List<dynamic> data) {
-    var goalSteps = data[0];
-    var offset = data[1];
+    goalSteps = data[0];
+    offset = data[1];
     var hour = clock.now().hour;
     var entries = <String>[];
 
@@ -92,8 +144,8 @@ class StepsPerHourState extends State<StepsPerHour> {
         Expanded(
           child: Center(
             child: Text((stepGoalMode)
-                ? "Goal:$goalSteps Offset:$offset"
-                : "Offset:$offset Goal:$goalSteps"),
+                ? "Goal:$goalSteps Offset:$offset Current:$currentSteps"
+                : "Offset:$offset Goal:$goalSteps Current:$currentSteps"),
           ),
         ),
         IconButton(
@@ -151,7 +203,8 @@ class StepsPerHourState extends State<StepsPerHour> {
                   ),
                   IconButton(
                       icon: Icon(Icons.refresh),
-                      onPressed: () {
+                      onPressed: () async {
+                        currentSteps = await getSteps();
                         setState(() {});
                       }),
                 ],
