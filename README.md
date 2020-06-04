@@ -1,16 +1,39 @@
 # stepsperhour
 
-spaces steps out
+Displays goal steps per hour, your current steps for the day from fitbit.
 
-## Getting Started
+## Flutter plugins used
 
-This project is a starting point for a Flutter application.
+- clock -- used to detect day change and reset offset each day and only show current hour and onward
+- flutter_web_auth -- plugin for oauth authentication
+- http -- used to perform fitbit requests, and get tokens using authentication, and refresh tokens
 
-A few resources to get you started if this is your first Flutter project:
+## Android Manifest
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+- Add the following to both the debug manifest and release manifest
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+- The following is in the release manifest, it allows oauth to feed into the auth plugin.  The callback should be updated to what you entered into fitbit New App
+
+          <activity android:name="com.linusu.flutter_web_auth.CallbackActivity" >
+              <intent-filter android:label="flutter_web_auth">
+                  <action android:name="android.intent.action.VIEW" />
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <category android:name="android.intent.category.BROWSABLE" />
+                  <data android:scheme="com.test.app" />
+              </intent-filter>
+          </activity>
+
+## Secrets File
+
+- Use link below to register an app, and copy the clientId and clientSecret to file below
+- [Register New App](https://dev.fitbit.com/apps/new)
+- The clientId and secret will be accessible to the app.
+
+Contents of file:
+
+    {
+        "client_id": "<your fitbit apps clientId>"
+        "client_secret": "<your fitbit apps clientSecret>"
+    }
