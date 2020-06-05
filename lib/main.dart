@@ -12,6 +12,7 @@ void main() => runApp(MyApp());
 int goalStepsDefault = 12000;
 int goalSteps = 12000;
 int offset = 0;
+String date = '';
 bool stepGoalMode = true;
 int currentSteps = 0;
 
@@ -72,17 +73,19 @@ Future<int> getSteps() async {
   return steps;
 }
 
-_write_settings(int steps, int offset) async {
+_write_settings(int steps, int offset, String date) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   prefs.setInt('goalsteps', steps);
   prefs.setInt('offset', offset);
+  prefs.setString('date', date);
 }
 
 Future<dynamic> _pullGoalStepsFromPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
   int offset = (prefs.getInt('offset') ?? 0);
-  return [steps, offset];
+  var date = (prefs.getString('date') ?? '');
+  return [steps, offset, date];
 }
 
 class MyApp extends StatelessWidget {
@@ -101,6 +104,15 @@ class StepsPerHourState extends State<StepsPerHour> {
   Widget _buildStepsPerHour(List<dynamic> data) {
     goalSteps = data[0];
     offset = data[1];
+    date = data[2];
+    var today = "${clock.now().month}.${clock.now().day}.${clock.now().year}";
+    if (date != today) {
+      date = today;
+      goalSteps = goalStepsDefault;
+      offset = 0;
+      _write_settings(goalSteps, offset, date);
+    }
+
     var hour = clock.now().hour;
     var entries = <String>[];
 
@@ -139,7 +151,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   offset += 100;
                 }
               });
-              _write_settings(goalSteps, offset);
+              _write_settings(goalSteps, offset, date);
             }),
         Expanded(
           child: Center(
@@ -158,7 +170,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   offset -= 100;
                 }
               });
-              _write_settings(goalSteps, offset);
+              _write_settings(goalSteps, offset, date);
             }),
       ],
     );
@@ -194,7 +206,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      _write_settings(goalStepsDefault, 0);
+                      _write_settings(goalStepsDefault, 0, date);
                       setState(() {
                         goalSteps = goalStepsDefault;
                         offset = 0;
