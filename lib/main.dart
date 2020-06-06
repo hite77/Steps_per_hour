@@ -108,7 +108,6 @@ class StepsPerHourState extends State<StepsPerHour> {
     var today = "${clock.now().month}.${clock.now().day}.${clock.now().year}";
     if (date != today) {
       date = today;
-      goalSteps = goalStepsDefault;
       offset = 0;
       _write_settings(goalSteps, offset, date);
     }
@@ -206,9 +205,8 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      _write_settings(goalStepsDefault, 0, date);
+                      _write_settings(goalSteps, 0, date);
                       setState(() {
-                        goalSteps = goalStepsDefault;
                         offset = 0;
                       });
                     },
