@@ -14,7 +14,7 @@ int goalSteps = 12000;
 int offset = 0;
 String date = '';
 bool stepGoalMode = true;
-int currentSteps = 0;
+String currentSteps = '0';
 
 roundDecimal(int unroundedSteps) {
   final lastNumber = unroundedSteps % 10;
@@ -29,9 +29,11 @@ roundDecimal(int unroundedSteps) {
 
 class Secret {
   final String clientId;
-  Secret({this.clientId = ""});
+  final String clientSecret;
+  Secret({this.clientId = "", this.clientSecret = ""});
   factory Secret.fromJson(Map<String, dynamic> jsonMap) {
-    return new Secret(clientId: jsonMap["client_id"]);
+    return new Secret(
+        clientId: jsonMap["client_id"], clientSecret: jsonMap["client_secret"]);
   }
 }
 
@@ -48,28 +50,91 @@ class SecretLoader {
   }
 }
 
-Future<int> getSteps() async {
+void persistTokens(accessToken, refreshToken) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  prefs.setString('accessToken', accessToken);
+  prefs.setString('refreshToken', refreshToken);
+}
+
+Future<List> authorizeAndGetTokens(Secret secret, String base64Str) async {
   final callbackUrlScheme = 'com.test.app://oauth2redirect';
-  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
 
   final url = Uri.https('www.fitbit.com', '/oauth2/authorize', {
-    'response_type': 'token',
+    'response_type': 'code',
     'client_id': secret.clientId,
     'redirect_uri': '$callbackUrlScheme',
     'scope': 'activity',
+    'expires_in': '604800'
   });
 
-// Present the dialog to the user
   final result = await FlutterWebAuth.authenticate(
       url: Uri.decodeComponent(url.toString()),
       callbackUrlScheme: 'com.test.app');
+  final code = result.split('?code=')[1].split('#_=_')[0];
 
-  final token = result.split('#access_token=')[1].split('&user_id')[0];
+  final tokens = await http.post("https://api.fitbit.com/oauth2/token", body: {
+    'client_id': secret.clientId,
+    'grant_type': 'authorization_code',
+    'redirect_uri': '$callbackUrlScheme',
+    'code': code,
+  }, headers: {
+    'Authorization': 'Basic ' + base64Str
+  });
 
-  final activity = await http.get(
+  String accessToken = jsonDecode(tokens.body)['access_token'];
+  String refreshToken = jsonDecode(tokens.body)['refresh_token'];
+
+  persistTokens(accessToken, refreshToken);
+
+  return [accessToken, refreshToken];
+}
+
+Future<String> getSteps() async {
+  Secret secret = await SecretLoader(secretPath: "secrets.json").load();
+
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String accessToken = (prefs.getString('accessToken') ?? '');
+  String refreshToken = (prefs.getString('refreshToken') ?? '');
+
+  String secretsText = "${secret.clientId}:${secret.clientSecret}";
+  List encodedText = utf8.encode(secretsText);
+  String base64Str = base64.encode(encodedText);
+
+  if (accessToken == '') {
+    List tokens = await authorizeAndGetTokens(secret, base64Str);
+    accessToken = tokens[0];
+    refreshToken = tokens[1];
+  }
+
+  var activity = await http.get(
       'https://api.fitbit.com/1/user/-/activities/date/today.json',
-      headers: {'Authorization': 'Bearer ' + token});
-  final steps = jsonDecode(activity.body)['summary']['steps'];
+      headers: {'Authorization': 'Bearer ' + accessToken});
+  if (activity.statusCode != 200) {
+    final refresh =
+        await http.post("https://api.fitbit.com/oauth2/token", body: {
+      'client_id': secret.clientId,
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken,
+    }, headers: {
+      'Authorization': 'Basic ' + base64Str
+    });
+
+    if (refresh.statusCode != 200) {
+      prefs.remove('accessToken');
+      prefs.remove('refreshToken');
+      return 'error refresh token';
+    }
+
+    accessToken = jsonDecode(refresh.body)['access_token'];
+    refreshToken = jsonDecode(refresh.body)['refresh_token'];
+
+    persistTokens(accessToken, refreshToken);
+
+    activity = await http.get(
+        'https://api.fitbit.com/1/user/-/activities/date/today.json',
+        headers: {'Authorization': 'Bearer ' + accessToken});
+  }
+  String steps = jsonDecode(activity.body)['summary']['steps'].toString();
   return steps;
 }
 
