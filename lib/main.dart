@@ -63,7 +63,7 @@ Future<List> authorizeAndGetTokens(Secret secret, String base64Str) async {
     'response_type': 'code',
     'client_id': secret.clientId,
     'redirect_uri': '$callbackUrlScheme',
-    'scope': 'activity',
+    'scope': 'activity weight',
     'expires_in': '604800'
   });
 

@@ -37,3 +37,15 @@ Contents of file:
         "client_id": "<your fitbit apps clientId>"
         "client_secret": "<your fitbit apps clientSecret>"
     }
+
+## Weight
+
+    curl -i -H "Authorization: Bearer <Access_Token>" \
+        -H "Accept-Language: en_US" \
+        -H "Accept-Local: en_US"  \
+        https://api.fitbit.com/1/user/-/body/log/weight/date/2020-01-01.json
+
+- Pulls pounds and other info for specific date
+- Can call with date and also indicate a time period of up to 1month.
+- Will need to pull for time period, and get into series data for graphing.
+- Likely set to at least a month, or if more then call multiple times.
