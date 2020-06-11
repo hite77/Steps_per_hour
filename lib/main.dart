@@ -13,8 +13,9 @@ int goalStepsDefault = 12000;
 int goalSteps = 12000;
 int offset = 0;
 String date = '';
-bool stepGoalMode = true;
 String currentSteps = '0';
+int steps = 0;
+int increase = roundDecimal((goalSteps / 14).floor());
 
 roundDecimal(int unroundedSteps) {
   final lastNumber = unroundedSteps % 10;
@@ -120,15 +121,24 @@ Future<String> getSteps() async {
     });
 
     if (refresh.statusCode != 200) {
-      prefs.remove('accessToken');
-      prefs.remove('refreshToken');
-      return 'error refresh token';
+      // try one more time
+      authorizeAndGetTokens(secret, base64Str);
+      List tokens = await authorizeAndGetTokens(secret, base64Str);
+      accessToken = tokens[0];
+      refreshToken = tokens[1];
+      var activity = await http.get(
+          'https://api.fitbit.com/1/user/-/activities/date/today.json',
+          headers: {'Authorization': 'Bearer ' + accessToken});
+      if (activity.statusCode != 200) {
+        prefs.remove('accessToken');
+        prefs.remove('refreshToken');
+        return 'error refresh token';
+      }
+    } else {
+      accessToken = jsonDecode(refresh.body)['access_token'];
+      refreshToken = jsonDecode(refresh.body)['refresh_token'];
+      persistTokens(accessToken, refreshToken);
     }
-
-    accessToken = jsonDecode(refresh.body)['access_token'];
-    refreshToken = jsonDecode(refresh.body)['refresh_token'];
-
-    persistTokens(accessToken, refreshToken);
 
     activity = await http.get(
         'https://api.fitbit.com/1/user/-/activities/date/today.json',
@@ -138,19 +148,22 @@ Future<String> getSteps() async {
   return steps;
 }
 
-_write_settings(int steps, int offset, String date) async {
+_write_settings(int steps, int offset, String date, int increase) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   prefs.setInt('goalsteps', steps);
   prefs.setInt('offset', offset);
   prefs.setString('date', date);
+  prefs.setInt('increase', increase);
 }
 
 Future<dynamic> _pullGoalStepsFromPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
   int offset = (prefs.getInt('offset') ?? 0);
-  var date = (prefs.getString('date') ?? '');
-  return [steps, offset, date];
+  String date = (prefs.getString('date') ?? '');
+  int increase =
+      (prefs.getInt('increase') ?? roundDecimal((goalSteps / 14).floor()));
+  return [steps, offset, date, increase];
 }
 
 class MyApp extends StatelessWidget {
@@ -163,6 +176,12 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class StringWithCompletion {
+  final text;
+  final complete;
+  const StringWithCompletion(this.text, this.complete);
+}
+
 class StepsPerHourState extends State<StepsPerHour> {
   final _biggerFont = const TextStyle(fontSize: 18.0);
 
@@ -170,31 +189,72 @@ class StepsPerHourState extends State<StepsPerHour> {
     goalSteps = data[0];
     offset = data[1];
     date = data[2];
+    increase = data[3];
     var today = "${clock.now().month}.${clock.now().day}.${clock.now().year}";
     if (date != today) {
       date = today;
       offset = 0;
-      _write_settings(goalSteps, offset, date);
+      increase = roundDecimal((goalSteps / 14).floor());
+      _write_settings(goalSteps, offset, date, increase);
     }
 
     var hour = clock.now().hour;
-    var entries = <String>[];
+    var entries = <StringWithCompletion>[];
 
-    var increase = roundDecimal((goalSteps / 14).floor());
-    if (hour <= 7) entries.add("7  -->   ${increase + offset} steps");
-    if (hour <= 8) entries.add("8  -->   ${increase * 2 + offset} steps");
-    if (hour <= 9) entries.add("9  -->   ${increase * 3 + offset} steps");
-    if (hour <= 10) entries.add("10 -->  ${increase * 4 + offset} steps");
-    if (hour <= 11) entries.add("11 -->  ${increase * 5 + offset} steps");
-    if (hour <= 12) entries.add("12 -->  ${increase * 6 + offset} steps");
-    if (hour <= 13) entries.add("1  -->  ${increase * 7 + offset} steps");
-    if (hour <= 14) entries.add("2  -->  ${increase * 8 + offset} steps");
-    if (hour <= 15) entries.add("3  -->  ${increase * 9 + offset} steps");
-    if (hour <= 16) entries.add("4  -->  ${increase * 10 + offset} steps");
-    if (hour <= 17) entries.add("5  -->  ${increase * 11 + offset} steps");
-    if (hour <= 18) entries.add("6  -->  ${increase * 12 + offset} steps");
-    if (hour <= 19) entries.add("7  -->  ${increase * 13 + offset} steps");
-    if (hour <= 20) entries.add("8  --> ${goalSteps + offset} steps");
+    if (hour <= 7)
+      entries.add(StringWithCompletion(
+          "7  -->   ${increase + offset} steps", steps >= (increase + offset)));
+    if (hour <= 8)
+      entries.add(StringWithCompletion(
+          "8  -->   ${increase * 2 + offset} steps",
+          steps >= (increase * 2 + offset)));
+    if (hour <= 9)
+      entries.add(StringWithCompletion(
+          "9  -->   ${increase * 3 + offset} steps",
+          steps >= (increase * 3 + offset)));
+    if (hour <= 10)
+      entries.add(StringWithCompletion("10 -->  ${increase * 4 + offset} steps",
+          steps >= (increase * 4 + offset)));
+    if (hour <= 11)
+      entries.add(StringWithCompletion("11 -->  ${increase * 5 + offset} steps",
+          steps >= (increase * 5 + offset)));
+    if (hour <= 12)
+      entries.add(StringWithCompletion("12 -->  ${increase * 6 + offset} steps",
+          steps >= (increase * 6 + offset)));
+    if (hour <= 13)
+      entries.add(StringWithCompletion("1  -->  ${increase * 7 + offset} steps",
+          steps >= (increase * 7 + offset)));
+    if (hour <= 14)
+      entries.add(StringWithCompletion("2  -->  ${increase * 8 + offset} steps",
+          steps >= (increase * 8 + offset)));
+    if (hour <= 15)
+      entries.add(StringWithCompletion("3  -->  ${increase * 9 + offset} steps",
+          steps >= (increase * 9 + offset)));
+    if (hour <= 16)
+      entries.add(StringWithCompletion(
+          "4  -->  ${increase * 10 + offset} steps",
+          steps >= (increase * 10 + offset)));
+    if (hour <= 17)
+      entries.add(StringWithCompletion(
+          "5  -->  ${increase * 11 + offset} steps",
+          steps >= (increase * 11 + offset)));
+    if (hour <= 18)
+      entries.add(StringWithCompletion(
+          "6  -->  ${increase * 12 + offset} steps",
+          steps >= (increase * 12 + offset)));
+    if (hour <= 19)
+      entries.add(StringWithCompletion(
+          "7  -->  ${increase * 13 + offset} steps",
+          steps >= (increase * 13 + offset)));
+    if (hour <= 20) if (hour <= 20) {
+      if (offset < 0) {
+        entries.add(StringWithCompletion(
+            "8  -->  ${goalSteps} steps", steps >= (goalSteps)));
+      } else {
+        entries.add(StringWithCompletion("8  -->  ${goalSteps + offset} steps",
+            steps >= (goalSteps + offset)));
+      }
+    }
 
     List<Widget> entriesList = [];
     entriesList.add(_headerRow());
@@ -208,42 +268,36 @@ class StepsPerHourState extends State<StepsPerHour> {
         IconButton(
             icon: Icon(Icons.arrow_upward),
             onPressed: () async {
-              setState(() {
-                if (stepGoalMode) {
-                  goalSteps += 1000;
-                } else {
-                  offset += 100;
-                }
+              setState(() async {
+                goalSteps += 1000;
+                await recalculateStepIncrease();
               });
-              _write_settings(goalSteps, offset, date);
             }),
         Expanded(
           child: Center(
-            child: Text((stepGoalMode)
-                ? "Goal:$goalSteps Offset:$offset Current:$currentSteps"
-                : "Offset:$offset Goal:$goalSteps Current:$currentSteps"),
+            child: Text("Goal:$goalSteps Current:$currentSteps"),
           ),
         ),
         IconButton(
             icon: Icon(Icons.arrow_downward),
             onPressed: () async {
-              setState(() {
-                if (stepGoalMode) {
-                  goalSteps -= 1000;
-                } else {
-                  offset -= 100;
-                }
+              setState(() async {
+                goalSteps -= 1000;
+                await recalculateStepIncrease();
               });
-              _write_settings(goalSteps, offset, date);
+              _write_settings(goalSteps, offset, date, increase);
             }),
       ],
     );
   }
 
-  Widget _buildRow(String text) {
+  Widget _buildRow(StringWithCompletion stringWithCompletion) {
     return ListTile(
+      leading: Icon((stringWithCompletion.complete)
+          ? Icons.check_box
+          : Icons.check_box_outline_blank),
       title: Text(
-        text,
+        stringWithCompletion.text,
         style: _biggerFont,
       ),
     );
@@ -260,17 +314,10 @@ class StepsPerHourState extends State<StepsPerHour> {
                 title: Text('Steps Per Hour'),
                 actions: <Widget>[
                   IconButton(
-                    icon: Icon(Icons.build),
-                    onPressed: () async {
-                      setState(() {
-                        stepGoalMode = !stepGoalMode;
-                      });
-                    },
-                  ),
-                  IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      _write_settings(goalSteps, 0, date);
+                      _write_settings(goalSteps, 0, date,
+                          roundDecimal((goalSteps / 14).floor()));
                       setState(() {
                         offset = 0;
                       });
@@ -282,6 +329,12 @@ class StepsPerHourState extends State<StepsPerHour> {
                         currentSteps = await getSteps();
                         setState(() {});
                       }),
+                  IconButton(
+                      icon: Icon(Icons.add),
+                      onPressed: () async {
+                        await recalculateStepIncrease();
+                        setState(() {});
+                      }),
                 ],
               ),
               body: _buildStepsPerHour(snapshot.data));
@@ -290,6 +343,24 @@ class StepsPerHourState extends State<StepsPerHour> {
         }
       },
     );
+  }
+
+  Future recalculateStepIncrease() async {
+    currentSteps = await getSteps();
+    steps = int.parse(currentSteps);
+    int hour = clock.now().hour;
+    int originalIncrease = roundDecimal((goalSteps / 14).floor());
+    int currentHourGoalSteps = originalIncrease * (hour - 6);
+    if (steps >= currentHourGoalSteps) {
+      offset = steps - currentHourGoalSteps;
+      increase =
+          roundDecimal(((goalSteps + offset - steps) / (20 - hour)).floor());
+    } else if (steps < currentHourGoalSteps) {
+      increase = ((goalSteps - steps) / (20 - hour)).floor();
+      offset = steps - increase * (hour - 6);
+    }
+
+    _write_settings(goalSteps, offset, date, increase);
   }
 }
 
