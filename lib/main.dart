@@ -247,7 +247,7 @@ class StepsPerHourState extends State<StepsPerHour> {
           "7  -->  ${increase * 13 + offset} steps",
           steps >= (increase * 13 + offset)));
     if (hour <= 20) if (hour <= 20) {
-      if (offset < 0) {
+      if (offset <= 0) {
         entries.add(StringWithCompletion(
             "8  -->  ${goalSteps} steps", steps >= (goalSteps)));
       } else {
@@ -268,24 +268,27 @@ class StepsPerHourState extends State<StepsPerHour> {
         IconButton(
             icon: Icon(Icons.arrow_upward),
             onPressed: () async {
-              setState(() async {
-                goalSteps += 1000;
-                await recalculateStepIncrease();
-              });
+              goalSteps += 1000;
+              offset = 0;
+              increase = roundDecimal((goalSteps / 14).floor());
+              _write_settings(goalSteps, offset, date, increase);
+              setState(() {});
             }),
         Expanded(
           child: Center(
-            child: Text("Goal:$goalSteps Current:$currentSteps"),
+            child: Text((offset <= 0)
+                ? "Goal:$goalSteps Current:$currentSteps"
+                : "Goal:${goalSteps + offset} Current:$currentSteps"),
           ),
         ),
         IconButton(
             icon: Icon(Icons.arrow_downward),
             onPressed: () async {
-              setState(() async {
-                goalSteps -= 1000;
-                await recalculateStepIncrease();
-              });
+              goalSteps -= 1000;
+              offset = 0;
+              increase = roundDecimal((goalSteps / 14).floor());
               _write_settings(goalSteps, offset, date, increase);
+              setState(() {});
             }),
       ],
     );
@@ -327,6 +330,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                       icon: Icon(Icons.refresh),
                       onPressed: () async {
                         currentSteps = await getSteps();
+                        steps = int.parse(currentSteps);
                         setState(() {});
                       }),
                   IconButton(
