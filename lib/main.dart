@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +9,35 @@ import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(TabBarApp());
+
+class TabBarApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            bottom: TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.directions_walk)),
+                Tab(icon: Icon(Icons.multiline_chart)),
+              ],
+            ),
+            title: Text('Fit Data'),
+          ),
+          body: TabBarView(
+            children: [
+              StepApp(),
+              SimpleLineChart.withSampleData(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 int goalStepsDefault = 12000;
 int goalSteps = 12000;
@@ -166,7 +196,7 @@ Future<dynamic> _pullGoalStepsFromPreferences() async {
   return [steps, offset, date, increase];
 }
 
-class MyApp extends StatelessWidget {
+class StepApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -366,6 +396,86 @@ class StepsPerHourState extends State<StepsPerHour> {
 
     _write_settings(goalSteps, offset, date, increase);
   }
+}
+
+class SimpleLineChart extends StatelessWidget {
+  final List<charts.Series> seriesList;
+  final bool animate;
+
+  SimpleLineChart(this.seriesList, {this.animate});
+
+  /// Creates a [LineChart] with sample data and no transition.
+  factory SimpleLineChart.withSampleData() {
+    return new SimpleLineChart(
+      _createSampleData(),
+      // Disable animations for image tests.
+      animate: false,
+    );
+  }
+
+  // EXCLUDE_FROM_GALLERY_DOCS_START
+  // This section is excluded from being copied to the gallery.
+  // It is used for creating random series data to demonstrate animation in
+  // the example app only.
+  factory SimpleLineChart.withRandomData() {
+    return new SimpleLineChart(_createRandomData());
+  }
+
+  /// Create random data.
+  static List<charts.Series<CalendarWeight, num>> _createRandomData() {
+    final random = new Random();
+
+    final data = [
+      new CalendarWeight(0, random.nextDouble()),
+      new CalendarWeight(1, random.nextDouble()),
+      new CalendarWeight(2, random.nextDouble()),
+      new CalendarWeight(3, random.nextDouble()),
+    ];
+
+    return [
+      new charts.Series<CalendarWeight, int>(
+        id: 'Sales',
+        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
+        domainFn: (CalendarWeight sales, _) => sales.date,
+        measureFn: (CalendarWeight sales, _) => sales.weight,
+        data: data,
+      )
+    ];
+  }
+  // EXCLUDE_FROM_GALLERY_DOCS_END
+
+  @override
+  Widget build(BuildContext context) {
+    return new charts.LineChart(seriesList, animate: animate);
+  }
+
+  /// Create one series with sample hard coded data.
+  static List<charts.Series<CalendarWeight, int>> _createSampleData() {
+    final data = [
+      new CalendarWeight(0, 200.1),
+      new CalendarWeight(1, 199.5),
+      new CalendarWeight(2, 180),
+      new CalendarWeight(3, 220),
+    ];
+
+    return [
+      new charts.Series<CalendarWeight, int>(
+        id: 'Sales',
+        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
+        domainFn: (CalendarWeight sales, _) => sales.date,
+        measureFn: (CalendarWeight sales, _) => sales.weight,
+        data: data,
+      )
+    ];
+  }
+}
+
+/// Sample linear data type.
+class CalendarWeight {
+  final int date;
+  final double weight;
+
+  CalendarWeight(this.date, this.weight);
 }
 
 class StepsPerHour extends StatefulWidget {
