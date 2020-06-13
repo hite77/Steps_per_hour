@@ -1,5 +1,5 @@
+import 'dart:collection';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:clock/clock.dart';
@@ -30,7 +30,7 @@ class TabBarApp extends StatelessWidget {
           body: TabBarView(
             children: [
               StepApp(),
-              SimpleLineChart.withSampleData(),
+              new TimeSeriesLineAnnotationChart(),
             ],
           ),
         ),
@@ -42,7 +42,7 @@ class TabBarApp extends StatelessWidget {
 int goalStepsDefault = 12000;
 int goalSteps = 12000;
 int offset = 0;
-String date = '';
+String dateString = '';
 String currentSteps = '0';
 int steps = 0;
 int increase = roundDecimal((goalSteps / 14).floor());
@@ -120,7 +120,7 @@ Future<List> authorizeAndGetTokens(Secret secret, String base64Str) async {
   return [accessToken, refreshToken];
 }
 
-Future<String> getSteps() async {
+Future<String> getTokens() async {
   Secret secret = await SecretLoader(secretPath: "secrets.json").load();
 
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -169,11 +169,15 @@ Future<String> getSteps() async {
       refreshToken = jsonDecode(refresh.body)['refresh_token'];
       persistTokens(accessToken, refreshToken);
     }
-
-    activity = await http.get(
-        'https://api.fitbit.com/1/user/-/activities/date/today.json',
-        headers: {'Authorization': 'Bearer ' + accessToken});
   }
+  return accessToken;
+}
+
+Future<String> getSteps() async {
+  final String accessToken = await getTokens();
+  var activity = await http.get(
+      'https://api.fitbit.com/1/user/-/activities/date/today.json',
+      headers: {'Authorization': 'Bearer ' + accessToken});
   String steps = jsonDecode(activity.body)['summary']['steps'].toString();
   return steps;
 }
@@ -218,14 +222,14 @@ class StepsPerHourState extends State<StepsPerHour> {
   Widget _buildStepsPerHour(List<dynamic> data) {
     goalSteps = data[0];
     offset = data[1];
-    date = data[2];
+    dateString = data[2];
     increase = data[3];
     var today = "${clock.now().month}.${clock.now().day}.${clock.now().year}";
-    if (date != today) {
-      date = today;
+    if (dateString != today) {
+      dateString = today;
       offset = 0;
       increase = roundDecimal((goalSteps / 14).floor());
-      _write_settings(goalSteps, offset, date, increase);
+      _write_settings(goalSteps, offset, dateString, increase);
     }
 
     var hour = clock.now().hour;
@@ -301,7 +305,7 @@ class StepsPerHourState extends State<StepsPerHour> {
               goalSteps += 1000;
               offset = 0;
               increase = roundDecimal((goalSteps / 14).floor());
-              _write_settings(goalSteps, offset, date, increase);
+              _write_settings(goalSteps, offset, dateString, increase);
               setState(() {});
             }),
         Expanded(
@@ -317,7 +321,7 @@ class StepsPerHourState extends State<StepsPerHour> {
               goalSteps -= 1000;
               offset = 0;
               increase = roundDecimal((goalSteps / 14).floor());
-              _write_settings(goalSteps, offset, date, increase);
+              _write_settings(goalSteps, offset, dateString, increase);
               setState(() {});
             }),
       ],
@@ -349,7 +353,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      _write_settings(goalSteps, 0, date,
+                      _write_settings(goalSteps, 0, dateString,
                           roundDecimal((goalSteps / 14).floor()));
                       setState(() {
                         offset = 0;
@@ -394,88 +398,83 @@ class StepsPerHourState extends State<StepsPerHour> {
       offset = steps - increase * (hour - 6);
     }
 
-    _write_settings(goalSteps, offset, date, increase);
+    _write_settings(goalSteps, offset, dateString, increase);
   }
 }
 
-class SimpleLineChart extends StatelessWidget {
-  final List<charts.Series> seriesList;
-  final bool animate;
+class TimeSeriesLineAnnotationChart extends StatelessWidget {
+  List<charts.Series> seriesList;
+  var animate;
 
-  SimpleLineChart(this.seriesList, {this.animate});
-
-  /// Creates a [LineChart] with sample data and no transition.
-  factory SimpleLineChart.withSampleData() {
-    return new SimpleLineChart(
-      _createSampleData(),
-      // Disable animations for image tests.
-      animate: false,
-    );
-  }
-
-  // EXCLUDE_FROM_GALLERY_DOCS_START
-  // This section is excluded from being copied to the gallery.
-  // It is used for creating random series data to demonstrate animation in
-  // the example app only.
-  factory SimpleLineChart.withRandomData() {
-    return new SimpleLineChart(_createRandomData());
-  }
-
-  /// Create random data.
-  static List<charts.Series<CalendarWeight, num>> _createRandomData() {
-    final random = new Random();
-
-    final data = [
-      new CalendarWeight(0, random.nextDouble()),
-      new CalendarWeight(1, random.nextDouble()),
-      new CalendarWeight(2, random.nextDouble()),
-      new CalendarWeight(3, random.nextDouble()),
-    ];
-
-    return [
-      new charts.Series<CalendarWeight, int>(
-        id: 'Sales',
-        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
-        domainFn: (CalendarWeight sales, _) => sales.date,
-        measureFn: (CalendarWeight sales, _) => sales.weight,
-        data: data,
-      )
-    ];
-  }
-  // EXCLUDE_FROM_GALLERY_DOCS_END
+  /// Creates a [TimeSeriesChart] with sample data and no transition.
 
   @override
   Widget build(BuildContext context) {
-    return new charts.LineChart(seriesList, animate: animate);
+    return FutureBuilder<dynamic>(
+        future: _loadAMonth(),
+        builder: (context, AsyncSnapshot<dynamic> snapshot) {
+          if (snapshot.hasData) {
+            seriesList = snapshot.data;
+            return new charts.TimeSeriesChart(seriesList, animate: animate);
+          } else {
+            return CircularProgressIndicator();
+          }
+        }
+
+        // this was what was needed to annotate....
+//        behaviors: [
+//      new charts.RangeAnnotation([
+//        new charts.LineAnnotationSegment(
+//            new DateTime(2017, 10, 4), charts.RangeAnnotationAxisType.domain,
+//            startLabel: 'Oct 4'),
+//        new charts.LineAnnotationSegment(
+//            new DateTime(2017, 10, 15), charts.RangeAnnotationAxisType.domain,
+//            endLabel: 'Oct 15'),
+//      ]),
+//    ]
+        );
   }
 
   /// Create one series with sample hard coded data.
-  static List<charts.Series<CalendarWeight, int>> _createSampleData() {
-    final data = [
-      new CalendarWeight(0, 200.1),
-      new CalendarWeight(1, 199.5),
-      new CalendarWeight(2, 180),
-      new CalendarWeight(3, 220),
-    ];
+  Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
+    final String accessToken = await getTokens();
+    var combinedHeader = new HashMap<String, String>();
+    combinedHeader['Authorization'] = 'Bearer ' + accessToken;
+    combinedHeader['Accept-Language'] = 'en_US';
+    combinedHeader['Accept-Local'] = 'en_US';
 
-    return [
-      new charts.Series<CalendarWeight, int>(
+    DateTime now = DateTime.now();
+    var prevMonth = new DateTime(now.year, now.month - 1, now.day);
+
+    var weightMonth = await http.get(
+        "https://api.fitbit.com/1/user/-/body/log/weight/date/${prevMonth.year}-${(prevMonth.month < 10) ? "0${prevMonth.month}" : prevMonth.month}-${(prevMonth.day < 10) ? "0${prevMonth.day}" : prevMonth.day}/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
+        headers: combinedHeader);
+
+    var data = <TimeSeriesSales>[];
+
+    jsonDecode(weightMonth.body)['weight'].forEach((weight) => data.add(
+        new TimeSeriesSales(
+            DateTime.parse(weight['date']), weight['weight'].toDouble())));
+
+    var series = [
+      new charts.Series<TimeSeriesSales, DateTime>(
         id: 'Sales',
-        colorFn: (_, __) => charts.MaterialPalette.blue.shadeDefault,
-        domainFn: (CalendarWeight sales, _) => sales.date,
-        measureFn: (CalendarWeight sales, _) => sales.weight,
+        domainFn: (TimeSeriesSales sales, _) => sales.time,
+        measureFn: (TimeSeriesSales sales, _) => sales.sales,
         data: data,
       )
     ];
+
+    return series;
   }
 }
 
-/// Sample linear data type.
-class CalendarWeight {
-  final int date;
-  final double weight;
+/// Sample time series data type.
+class TimeSeriesSales {
+  final DateTime time;
+  final double sales;
 
-  CalendarWeight(this.date, this.weight);
+  TimeSeriesSales(this.time, this.sales);
 }
 
 class StepsPerHour extends StatefulWidget {
