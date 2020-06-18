@@ -30,7 +30,7 @@ class TabBarApp extends StatelessWidget {
           body: TabBarView(
             children: [
               StepApp(),
-              new TimeSeriesLineAnnotationChart(),
+              ChartApp(),
             ],
           ),
         ),
@@ -206,6 +206,16 @@ class StepApp extends StatelessWidget {
     return MaterialApp(
       title: 'Steps per hour',
       home: StepsPerHour(),
+    );
+  }
+}
+
+class ChartApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Weight Chart',
+      home: Chart(),
     );
   }
 }
@@ -402,9 +412,13 @@ class StepsPerHourState extends State<StepsPerHour> {
   }
 }
 
-class TimeSeriesLineAnnotationChart extends StatelessWidget {
+class ChartState extends State<Chart> {
   List<charts.Series> seriesList;
   var animate;
+  double lowest = 100000.0;
+  double highest = 0.0;
+  int months = 6;
+  double current = 0.0;
 
   /// Creates a [TimeSeriesChart] with sample data and no transition.
 
@@ -415,7 +429,35 @@ class TimeSeriesLineAnnotationChart extends StatelessWidget {
         builder: (context, AsyncSnapshot<dynamic> snapshot) {
           if (snapshot.hasData) {
             seriesList = snapshot.data;
-            return new charts.TimeSeriesChart(seriesList, animate: animate);
+            return Scaffold(
+                appBar: AppBar(
+                  title: Text('$highest, $lowest, $current'),
+                  actions: <Widget>[
+                    IconButton(
+                      icon: Icon(Icons.arrow_downward),
+                      onPressed: () async {
+                        if (months > 1) {
+                          months = months - 1;
+                          highest = 0.0;
+                          lowest = 100000.0;
+                        }
+                        setState(() {});
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.arrow_upward),
+                      onPressed: () async {
+                        if (months < 12) {
+                          months = months + 1;
+                          highest = 0.0;
+                          lowest = 100000.0;
+                        }
+                        setState(() {});
+                      },
+                    ),
+                  ],
+                ),
+                body: new charts.TimeSeriesChart(seriesList, animate: animate));
           } else {
             return CircularProgressIndicator();
           }
@@ -435,6 +477,21 @@ class TimeSeriesLineAnnotationChart extends StatelessWidget {
         );
   }
 
+  AddElements(data, weightMonth, lowest, highest, current) {
+    jsonDecode(weightMonth.body)['weight'].forEach((weight) {
+      if (weight['weight'].toDouble() > highest) {
+        highest = weight['weight'].toDouble();
+      } else if (weight['weight'].toDouble() < lowest) {
+        lowest = weight['weight'].toDouble();
+      }
+      current = weight['weight'];
+      data.add(new TimeSeriesSales(
+          DateTime.parse(weight['date']), weight['weight'].toDouble()));
+    });
+
+    return [lowest, highest, current];
+  }
+
   /// Create one series with sample hard coded data.
   Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
     final String accessToken = await getTokens();
@@ -444,17 +501,30 @@ class TimeSeriesLineAnnotationChart extends StatelessWidget {
     combinedHeader['Accept-Local'] = 'en_US';
 
     DateTime now = DateTime.now();
-    var prevMonth = new DateTime(now.year, now.month - 1, now.day);
-
-    var weightMonth = await http.get(
-        "https://api.fitbit.com/1/user/-/body/log/weight/date/${prevMonth.year}-${(prevMonth.month < 10) ? "0${prevMonth.month}" : prevMonth.month}-${(prevMonth.day < 10) ? "0${prevMonth.day}" : prevMonth.day}/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
-        headers: combinedHeader);
 
     var data = <TimeSeriesSales>[];
 
-    jsonDecode(weightMonth.body)['weight'].forEach((weight) => data.add(
-        new TimeSeriesSales(
-            DateTime.parse(weight['date']), weight['weight'].toDouble())));
+    for (var i = months; i > 1; i = i - 1) {
+      var oldMonth = new DateTime(now.year, now.month - i, 1);
+      var endOfOldMonth = new DateTime(now.year, now.month - i + 1, 0);
+
+      var weightMonth = await http.get(
+          "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
+          headers: combinedHeader);
+
+      var extremes = AddElements(data, weightMonth, lowest, highest, current);
+      lowest = extremes[0];
+      highest = extremes[1];
+    }
+
+    var currentMonth = await http.get(
+        "https://api.fitbit.com/1/user/-/body/log/weight/date/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-01/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
+        headers: combinedHeader);
+
+    var extremes = AddElements(data, currentMonth, lowest, highest, current);
+    lowest = extremes[0];
+    highest = extremes[1];
+    current = extremes[2];
 
     var series = [
       new charts.Series<TimeSeriesSales, DateTime>(
@@ -475,6 +545,11 @@ class TimeSeriesSales {
   final double sales;
 
   TimeSeriesSales(this.time, this.sales);
+}
+
+class Chart extends StatefulWidget {
+  @override
+  ChartState createState() => ChartState();
 }
 
 class StepsPerHour extends StatefulWidget {
