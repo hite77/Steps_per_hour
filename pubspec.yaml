@@ -6,6 +6,8 @@ environment:
   sdk: ">=2.2.2 <3.0.0"
 
 dependencies:
+  sqflite: any
+  path: any
   http: ^0.12.1
   flutter_web_auth: any
   clock: ^1.0.1

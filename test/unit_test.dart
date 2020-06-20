@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stepsperhour/main.dart';
+import 'package:stepsperhour/roundDecimal.dart';
 
 void main() {
   group("roundDecimal rounds correctly", () {

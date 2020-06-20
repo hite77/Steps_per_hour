@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stepsperhour/roundDecimal.dart';
 
 void main() => runApp(TabBarApp());
 
@@ -46,17 +47,6 @@ String dateString = '';
 String currentSteps = '0';
 int steps = 0;
 int increase = roundDecimal((goalSteps / 14).floor());
-
-roundDecimal(int unroundedSteps) {
-  final lastNumber = unroundedSteps % 10;
-  if (lastNumber == 0 || lastNumber == 5) {
-    return unroundedSteps;
-  } else if (lastNumber < 5) {
-    return (unroundedSteps - lastNumber + 5);
-  } else {
-    return (unroundedSteps - lastNumber + 10);
-  }
-}
 
 class Secret {
   final String clientId;
