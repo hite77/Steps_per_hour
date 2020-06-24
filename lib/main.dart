@@ -8,7 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stepsperhour/dbhelper.dart';
 import 'package:stepsperhour/roundDecimal.dart';
+import 'package:stepsperhour/weight.dart';
 
 void main() => runApp(TabBarApp());
 
@@ -494,27 +496,76 @@ class ChartState extends State<Chart> {
 
     var data = <TimeSeriesSales>[];
 
-    for (var i = months; i > 1; i = i - 1) {
-      var oldMonth = new DateTime(now.year, now.month - i, 1);
-      var endOfOldMonth = new DateTime(now.year, now.month - i + 1, 0);
+    final dbHelper = DatabaseHelper.instance;
 
-      var weightMonth = await http.get(
-          "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
-          headers: combinedHeader);
+    //todo: make it delete old entries...
 
-      var extremes = AddElements(data, weightMonth, lowest, highest, current);
-      lowest = extremes[0];
-      highest = extremes[1];
-    }
+    //todo: add a Weight data then comment it out, put the date as 9 months ago...
+    var oldMonth = new DateTime(now.year, now.month - 9, 1);
+    var endOfOldMonth = new DateTime(now.year, now.month - 9 + 1, 0);
 
-    var currentMonth = await http.get(
-        "https://api.fitbit.com/1/user/-/body/log/weight/date/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-01/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
+    var weightMonth = await http.get(
+        "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
         headers: combinedHeader);
 
-    var extremes = AddElements(data, currentMonth, lowest, highest, current);
-    lowest = extremes[0];
-    highest = extremes[1];
-    current = extremes[2];
+    var dataToInsert = weightMonth.body;
+
+    Map<String, dynamic> row = {
+      DatabaseHelper.columnAge: endOfOldMonth.millisecondsSinceEpoch,
+      DatabaseHelper.columnData: dataToInsert,
+      DatabaseHelper.columnStart:
+          "${oldMonth.month}.${oldMonth.day}.${oldMonth.year}",
+      DatabaseHelper.columnEnd:
+          "${endOfOldMonth.month}.${endOfOldMonth.day}.${endOfOldMonth.year}"
+    };
+
+    Weight weight = Weight.fromMap(row);
+   await dbHelper.insert(weight);
+    var dbEntries = await dbHelper.queryAllRows();
+    dbEntries.forEach((element) {
+      print('difference');
+      print(DateTime.now()
+          .difference(DateTime.fromMillisecondsSinceEpoch(element['age']))
+          .inDays);
+      print('start');
+      print(element['start']);
+    });
+
+    await dbHelper.deleteOld();
+
+    print('after deletion');
+
+    dbEntries = await dbHelper.queryAllRows();
+    dbEntries.forEach((element) {
+      print('difference');
+      print(DateTime.fromMillisecondsSinceEpoch(element['age'])
+          .difference(DateTime.now())
+          .inDays);
+      print('start');
+      print(element['start']);
+    });
+
+//    for (var i = months; i > 1; i = i - 1) {
+//      var oldMonth = new DateTime(now.year, now.month - i, 1);
+//      var endOfOldMonth = new DateTime(now.year, now.month - i + 1, 0);
+//
+//      var weightMonth = await http.get(
+//          "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
+//          headers: combinedHeader);
+//
+//      var extremes = AddElements(data, weightMonth, lowest, highest, current);
+//      lowest = extremes[0];
+//      highest = extremes[1];
+//    }
+//
+//    var currentMonth = await http.get(
+//        "https://api.fitbit.com/1/user/-/body/log/weight/date/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-01/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
+//        headers: combinedHeader);
+//
+//    var extremes = AddElements(data, currentMonth, lowest, highest, current);
+//    lowest = extremes[0];
+//    highest = extremes[1];
+//    current = extremes[2];
 
     var series = [
       new charts.Series<TimeSeriesSales, DateTime>(
