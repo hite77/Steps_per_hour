@@ -71,22 +71,18 @@ class DatabaseHelper {
       }
     });
   }
-  //todo: need to update this to query on something...
- 
-  //todo: query for what I need, but need to work out how to get a weight out of it.
-//  Future<List<Map<String, dynamic>>> queryRows(name) async {
-//    Database db = await instance.database;
-//    return await db.query(table, where: "$columnName LIKE '%$name%'");
-//  }
 
-// need to use WEIGHT to find the correct ID and then update it
+  Future<List<Map<String, dynamic>>> queryRows(date) async {
+   Database db = await instance.database;
+   return await db.query(table, where: "$columnStart LIKE '%$date%'");
+ }
 
-  // update this to update my entries...
-//  Future<int> update(Car car) async {
-//    Database db = await instance.database;
-//    int id = car.toMap()['id'];
-//    return await db.update(table, car.toMap(), where: '$columnId = ?', whereArgs: [id]);
-//  }
+
+  Future<int> update(Weight weight) async {
+    Database db = await instance.database;
+    int id = weight.toMap()['id'];
+    return await db.update(table, weight.toMap(), where: '$columnId = ?', whereArgs: [id]);
+  }
 
   Future<int> delete(int id) async {
     Database db = await instance.database;

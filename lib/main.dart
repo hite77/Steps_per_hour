@@ -423,7 +423,7 @@ class ChartState extends State<Chart> {
             seriesList = snapshot.data;
             return Scaffold(
                 appBar: AppBar(
-                  title: Text('$highest, $lowest, $current'),
+                  title: Text('$months, $highest, $lowest, $current'),
                   actions: <Widget>[
                     IconButton(
                       icon: Icon(Icons.arrow_downward),
@@ -449,7 +449,12 @@ class ChartState extends State<Chart> {
                     ),
                   ],
                 ),
-                body: new charts.TimeSeriesChart(seriesList, animate: animate));
+                body: new charts.TimeSeriesChart(seriesList,
+                animate: animate,
+                primaryMeasureAxis: new charts.NumericAxisSpec(
+                  viewport: new charts.NumericExtents(lowest, highest)),
+                  behaviors: [new charts.PanAndZoomBehavior()],
+                ));
           } else {
             return CircularProgressIndicator();
           }
@@ -470,7 +475,7 @@ class ChartState extends State<Chart> {
   }
 
   AddElements(data, weightMonth, lowest, highest, current) {
-    jsonDecode(weightMonth.body)['weight'].forEach((weight) {
+    jsonDecode(weightMonth)['weight'].forEach((weight) {
       if (weight['weight'].toDouble() > highest) {
         highest = weight['weight'].toDouble();
       } else if (weight['weight'].toDouble() < lowest) {
@@ -484,88 +489,81 @@ class ChartState extends State<Chart> {
     return [lowest, highest, current];
   }
 
-  /// Create one series with sample hard coded data.
-  Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
-    final String accessToken = await getTokens();
-    var combinedHeader = new HashMap<String, String>();
+  _fetch_weights_from_fitbit(startDate, endDate, accessToken) async {
+      var combinedHeader = new HashMap<String, String>();
     combinedHeader['Authorization'] = 'Bearer ' + accessToken;
     combinedHeader['Accept-Language'] = 'en_US';
     combinedHeader['Accept-Local'] = 'en_US';
 
-    DateTime now = DateTime.now();
+      var weightMonth = await http.get(
+        "https://api.fitbit.com/1/user/-/body/log/weight/date/${startDate.year}-${(startDate.month < 10) ? "0${startDate.month}" : startDate.month}-${(startDate.day < 10) ? "0${startDate.day}" : startDate.day}/${endDate.year}-${(endDate.month < 10) ? "0${endDate.month}" : endDate.month}-${(endDate.day < 10) ? "0${endDate.day}" : endDate.day}.json",
+        headers: combinedHeader);
+
+     return weightMonth.body;
+  }
+
+  _request_data(accessToken, dbHelper, startDate, endDate) async {
+    var entries = await dbHelper.queryRows("${startDate.month}.${startDate.day}.${startDate.year}");
+    if (entries.length == 1) {
+      if (entries[0]['end'] == "${endDate.month}.${endDate.day}.${endDate.year}") {
+        // happiest path, I have the data for this end.
+        return entries[0]['data'];
+      }
+      // need to fetch data and update it out....
+      final dataToInsert = await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
+        Map<String, dynamic> row = {
+          DatabaseHelper.columnId: entries[0]['id'],
+      DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
+      DatabaseHelper.columnData: dataToInsert,
+      DatabaseHelper.columnStart: entries[0]['start'],
+      DatabaseHelper.columnEnd: "${endDate.month}.${endDate.day}.${endDate.year}"
+    };
+
+    Weight weight = Weight.fromMap(row);
+    await dbHelper.update(weight);
+    return dataToInsert;
+    }
+
+    // need to fetch data and insert.....
+    final dataToInsert = await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
+        Map<String, dynamic> row = {
+      DatabaseHelper.columnData: dataToInsert,
+      DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
+      DatabaseHelper.columnStart: "${startDate.month}.${startDate.day}.${startDate.year}",
+      DatabaseHelper.columnEnd: "${endDate.month}.${endDate.day}.${endDate.year}"
+    };
+
+    Weight weight = Weight.fromMap(row);
+    await dbHelper.insert(weight);
+    return dataToInsert;
+  }
+
+  Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
 
     var data = <TimeSeriesSales>[];
 
     final dbHelper = DatabaseHelper.instance;
 
-    //todo: make it delete old entries...
-
-    //todo: add a Weight data then comment it out, put the date as 9 months ago...
-    var oldMonth = new DateTime(now.year, now.month - 9, 1);
-    var endOfOldMonth = new DateTime(now.year, now.month - 9 + 1, 0);
-
-    var weightMonth = await http.get(
-        "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
-        headers: combinedHeader);
-
-    var dataToInsert = weightMonth.body;
-
-    Map<String, dynamic> row = {
-      DatabaseHelper.columnAge: endOfOldMonth.millisecondsSinceEpoch,
-      DatabaseHelper.columnData: dataToInsert,
-      DatabaseHelper.columnStart:
-          "${oldMonth.month}.${oldMonth.day}.${oldMonth.year}",
-      DatabaseHelper.columnEnd:
-          "${endOfOldMonth.month}.${endOfOldMonth.day}.${endOfOldMonth.year}"
-    };
-
-    Weight weight = Weight.fromMap(row);
-   await dbHelper.insert(weight);
-    var dbEntries = await dbHelper.queryAllRows();
-    dbEntries.forEach((element) {
-      print('difference');
-      print(DateTime.now()
-          .difference(DateTime.fromMillisecondsSinceEpoch(element['age']))
-          .inDays);
-      print('start');
-      print(element['start']);
-    });
-
     await dbHelper.deleteOld();
 
-    print('after deletion');
+    final String accessToken = await getTokens();
 
-    dbEntries = await dbHelper.queryAllRows();
-    dbEntries.forEach((element) {
-      print('difference');
-      print(DateTime.fromMillisecondsSinceEpoch(element['age'])
-          .difference(DateTime.now())
-          .inDays);
-      print('start');
-      print(element['start']);
-    });
+    DateTime now = DateTime.now();
 
-//    for (var i = months; i > 1; i = i - 1) {
-//      var oldMonth = new DateTime(now.year, now.month - i, 1);
-//      var endOfOldMonth = new DateTime(now.year, now.month - i + 1, 0);
-//
-//      var weightMonth = await http.get(
-//          "https://api.fitbit.com/1/user/-/body/log/weight/date/${oldMonth.year}-${(oldMonth.month < 10) ? "0${oldMonth.month}" : oldMonth.month}-${(oldMonth.day < 10) ? "0${oldMonth.day}" : oldMonth.day}/${endOfOldMonth.year}-${(endOfOldMonth.month < 10) ? "0${endOfOldMonth.month}" : endOfOldMonth.month}-${(endOfOldMonth.day < 10) ? "0${endOfOldMonth.day}" : endOfOldMonth.day}.json",
-//          headers: combinedHeader);
-//
-//      var extremes = AddElements(data, weightMonth, lowest, highest, current);
-//      lowest = extremes[0];
-//      highest = extremes[1];
-//    }
-//
-//    var currentMonth = await http.get(
-//        "https://api.fitbit.com/1/user/-/body/log/weight/date/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-01/${now.year}-${(now.month < 10) ? "0${now.month}" : now.month}-${(now.day < 10) ? "0${now.day}" : now.day}.json",
-//        headers: combinedHeader);
-//
-//    var extremes = AddElements(data, currentMonth, lowest, highest, current);
-//    lowest = extremes[0];
-//    highest = extremes[1];
-//    current = extremes[2];
+   for (var i = months; i > 1; i = i - 1) {
+
+     var weightMonth = await _request_data(accessToken, dbHelper, new DateTime(now.year, now.month - i, 1), new DateTime(now.year, now.month -i + 1, 0));
+     var extremes = AddElements(data, weightMonth, lowest, highest, current);
+     lowest = extremes[0];
+     highest = extremes[1];
+   }
+
+    var currentMonth = await _request_data(accessToken, dbHelper, new DateTime(now.year, now.month, 1), new DateTime(now.year, now.month, now.day));
+       var extremes = AddElements(data, currentMonth, lowest, highest, current);
+   lowest = extremes[0];
+   highest = extremes[1];
+   current = extremes[2];
+
 
     var series = [
       new charts.Series<TimeSeriesSales, DateTime>(
