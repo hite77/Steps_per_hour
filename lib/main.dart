@@ -42,8 +42,8 @@ class TabBarApp extends StatelessWidget {
   }
 }
 
-int goalStepsDefault = 12000;
-int goalSteps = 12000;
+int goalStepsDefault = 10000;
+int goalSteps = 10000;
 int offset = 0;
 String dateString = '';
 String currentSteps = '0';
@@ -449,10 +449,11 @@ class ChartState extends State<Chart> {
                     ),
                   ],
                 ),
-                body: new charts.TimeSeriesChart(seriesList,
-                animate: animate,
-                primaryMeasureAxis: new charts.NumericAxisSpec(
-                  viewport: new charts.NumericExtents(lowest, highest)),
+                body: new charts.TimeSeriesChart(
+                  seriesList,
+                  animate: animate,
+                  primaryMeasureAxis: new charts.NumericAxisSpec(
+                      viewport: new charts.NumericExtents(lowest, highest)),
                   behaviors: [new charts.PanAndZoomBehavior()],
                 ));
           } else {
@@ -490,47 +491,54 @@ class ChartState extends State<Chart> {
   }
 
   _fetch_weights_from_fitbit(startDate, endDate, accessToken) async {
-      var combinedHeader = new HashMap<String, String>();
+    var combinedHeader = new HashMap<String, String>();
     combinedHeader['Authorization'] = 'Bearer ' + accessToken;
     combinedHeader['Accept-Language'] = 'en_US';
     combinedHeader['Accept-Local'] = 'en_US';
 
-      var weightMonth = await http.get(
+    var weightMonth = await http.get(
         "https://api.fitbit.com/1/user/-/body/log/weight/date/${startDate.year}-${(startDate.month < 10) ? "0${startDate.month}" : startDate.month}-${(startDate.day < 10) ? "0${startDate.day}" : startDate.day}/${endDate.year}-${(endDate.month < 10) ? "0${endDate.month}" : endDate.month}-${(endDate.day < 10) ? "0${endDate.day}" : endDate.day}.json",
         headers: combinedHeader);
 
-     return weightMonth.body;
+    return weightMonth.body;
   }
 
   _request_data(accessToken, dbHelper, startDate, endDate) async {
-    var entries = await dbHelper.queryRows("${startDate.month}.${startDate.day}.${startDate.year}");
+    var entries = await dbHelper
+        .queryRows("${startDate.month}.${startDate.day}.${startDate.year}");
     if (entries.length == 1) {
-      if (entries[0]['end'] == "${endDate.month}.${endDate.day}.${endDate.year}") {
+      if (entries[0]['end'] ==
+          "${endDate.month}.${endDate.day}.${endDate.year}") {
         // happiest path, I have the data for this end.
         return entries[0]['data'];
       }
       // need to fetch data and update it out....
-      final dataToInsert = await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
-        Map<String, dynamic> row = {
-          DatabaseHelper.columnId: entries[0]['id'],
-      DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
-      DatabaseHelper.columnData: dataToInsert,
-      DatabaseHelper.columnStart: entries[0]['start'],
-      DatabaseHelper.columnEnd: "${endDate.month}.${endDate.day}.${endDate.year}"
-    };
+      final dataToInsert =
+          await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
+      Map<String, dynamic> row = {
+        DatabaseHelper.columnId: entries[0]['id'],
+        DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
+        DatabaseHelper.columnData: dataToInsert,
+        DatabaseHelper.columnStart: entries[0]['start'],
+        DatabaseHelper.columnEnd:
+            "${endDate.month}.${endDate.day}.${endDate.year}"
+      };
 
-    Weight weight = Weight.fromMap(row);
-    await dbHelper.update(weight);
-    return dataToInsert;
+      Weight weight = Weight.fromMap(row);
+      await dbHelper.update(weight);
+      return dataToInsert;
     }
 
     // need to fetch data and insert.....
-    final dataToInsert = await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
-        Map<String, dynamic> row = {
+    final dataToInsert =
+        await _fetch_weights_from_fitbit(startDate, endDate, accessToken);
+    Map<String, dynamic> row = {
       DatabaseHelper.columnData: dataToInsert,
       DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
-      DatabaseHelper.columnStart: "${startDate.month}.${startDate.day}.${startDate.year}",
-      DatabaseHelper.columnEnd: "${endDate.month}.${endDate.day}.${endDate.year}"
+      DatabaseHelper.columnStart:
+          "${startDate.month}.${startDate.day}.${startDate.year}",
+      DatabaseHelper.columnEnd:
+          "${endDate.month}.${endDate.day}.${endDate.year}"
     };
 
     Weight weight = Weight.fromMap(row);
@@ -539,7 +547,6 @@ class ChartState extends State<Chart> {
   }
 
   Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
-
     var data = <TimeSeriesSales>[];
 
     final dbHelper = DatabaseHelper.instance;
@@ -550,20 +557,26 @@ class ChartState extends State<Chart> {
 
     DateTime now = DateTime.now();
 
-   for (var i = months; i > 1; i = i - 1) {
+    for (var i = months; i > 1; i = i - 1) {
+      var weightMonth = await _request_data(
+          accessToken,
+          dbHelper,
+          new DateTime(now.year, now.month - i, 1),
+          new DateTime(now.year, now.month - i + 1, 0));
+      var extremes = AddElements(data, weightMonth, lowest, highest, current);
+      lowest = extremes[0];
+      highest = extremes[1];
+    }
 
-     var weightMonth = await _request_data(accessToken, dbHelper, new DateTime(now.year, now.month - i, 1), new DateTime(now.year, now.month -i + 1, 0));
-     var extremes = AddElements(data, weightMonth, lowest, highest, current);
-     lowest = extremes[0];
-     highest = extremes[1];
-   }
-
-    var currentMonth = await _request_data(accessToken, dbHelper, new DateTime(now.year, now.month, 1), new DateTime(now.year, now.month, now.day));
-       var extremes = AddElements(data, currentMonth, lowest, highest, current);
-   lowest = extremes[0];
-   highest = extremes[1];
-   current = extremes[2];
-
+    var currentMonth = await _request_data(
+        accessToken,
+        dbHelper,
+        new DateTime(now.year, now.month, 1),
+        new DateTime(now.year, now.month, now.day));
+    var extremes = AddElements(data, currentMonth, lowest, highest, current);
+    lowest = extremes[0];
+    highest = extremes[1];
+    current = extremes[2];
 
     var series = [
       new charts.Series<TimeSeriesSales, DateTime>(
