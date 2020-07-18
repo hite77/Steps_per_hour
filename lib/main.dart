@@ -417,7 +417,7 @@ class ChartState extends State<Chart> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<dynamic>(
-        future: _loadAMonth(),
+        future: _loadWeightData(),
         builder: (context, AsyncSnapshot<dynamic> snapshot) {
           if (snapshot.hasData) {
             seriesList = snapshot.data;
@@ -546,7 +546,8 @@ class ChartState extends State<Chart> {
     return dataToInsert;
   }
 
-  Future<List<charts.Series<TimeSeriesWeight, DateTime>>> _loadAMonth() async {
+  Future<List<charts.Series<TimeSeriesWeight, DateTime>>>
+      _loadWeightData() async {
     var data = <TimeSeriesWeight>[];
 
     final dbHelper = DatabaseHelper.instance;
@@ -581,8 +582,8 @@ class ChartState extends State<Chart> {
     var series = [
       new charts.Series<TimeSeriesWeight, DateTime>(
         id: 'Weight',
-        domainFn: (TimeSeriesWeight weight, _) => weight.date,
-        measureFn: (TimeSeriesWeight weight, _) => weight.weight,
+        domainFn: (TimeSeriesWeight entry, _) => entry.date,
+        measureFn: (TimeSeriesWeight entry, _) => entry.weight,
         data: data,
       )
     ];
