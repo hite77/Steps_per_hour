@@ -483,7 +483,7 @@ class ChartState extends State<Chart> {
         lowest = weight['weight'].toDouble();
       }
       current = weight['weight'];
-      data.add(new TimeSeriesSales(
+      data.add(new TimeSeriesWeight(
           DateTime.parse(weight['date']), weight['weight'].toDouble()));
     });
 
@@ -546,8 +546,8 @@ class ChartState extends State<Chart> {
     return dataToInsert;
   }
 
-  Future<List<charts.Series<TimeSeriesSales, DateTime>>> _loadAMonth() async {
-    var data = <TimeSeriesSales>[];
+  Future<List<charts.Series<TimeSeriesWeight, DateTime>>> _loadAMonth() async {
+    var data = <TimeSeriesWeight>[];
 
     final dbHelper = DatabaseHelper.instance;
 
@@ -579,10 +579,10 @@ class ChartState extends State<Chart> {
     current = extremes[2];
 
     var series = [
-      new charts.Series<TimeSeriesSales, DateTime>(
-        id: 'Sales',
-        domainFn: (TimeSeriesSales sales, _) => sales.time,
-        measureFn: (TimeSeriesSales sales, _) => sales.sales,
+      new charts.Series<TimeSeriesWeight, DateTime>(
+        id: 'Weight',
+        domainFn: (TimeSeriesWeight weight, _) => weight.date,
+        measureFn: (TimeSeriesWeight weight, _) => weight.weight,
         data: data,
       )
     ];
@@ -591,12 +591,11 @@ class ChartState extends State<Chart> {
   }
 }
 
-/// Sample time series data type.
-class TimeSeriesSales {
-  final DateTime time;
-  final double sales;
+class TimeSeriesWeight {
+  final DateTime date;
+  final double weight;
 
-  TimeSeriesSales(this.time, this.sales);
+  TimeSeriesWeight(this.date, this.weight);
 }
 
 class Chart extends StatefulWidget {
