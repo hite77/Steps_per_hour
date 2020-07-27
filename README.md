@@ -7,6 +7,9 @@ Displays goal steps per hour, your current steps for the day from fitbit.
 - clock -- used to detect day change and reset offset each day and only show current hour and onward
 - flutter_web_auth -- plugin for oauth authentication
 - http -- used to perform fitbit requests, and get tokens using authentication, and refresh tokens
+- sqflite -- sqlite database to store weight data
+- charts_flutter -- graph the weight and date
+- shared_preferences -- used to store goals, offsets, tokens from fitbit
 
 ## Android Manifest
 
@@ -31,7 +34,7 @@ Displays goal steps per hour, your current steps for the day from fitbit.
 - [Register New App](https://dev.fitbit.com/apps/new)
 - The clientId and secret will be accessible to the app.
 
-Contents of file:
+Contents of file(secrets.json):
 
     {
         "client_id": "<your fitbit apps clientId>"
