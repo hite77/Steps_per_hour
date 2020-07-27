@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stepsperhour/main.dart';
 import 'package:stepsperhour/utilities.dart';
-
-import 'main.dart';
 
 void persistTokens(accessToken, refreshToken) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -9,9 +8,9 @@ void persistTokens(accessToken, refreshToken) async {
   prefs.setString('refreshToken', refreshToken);
 }
 
-write_settings(int steps, int offset, String date, int increase) async {
+write_settings(int goalsteps, int offset, String date, int increase) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  prefs.setInt('goalsteps', steps);
+  prefs.setInt('goalsteps', goalsteps);
   prefs.setInt('offset', offset);
   prefs.setString('date', date);
   prefs.setInt('increase', increase);
@@ -19,10 +18,10 @@ write_settings(int steps, int offset, String date, int increase) async {
 
 Future<dynamic> pullGoalStepsFromPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  int steps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
+  goalSteps = (prefs.getInt('goalsteps') ?? goalStepsDefault);
   int offset = (prefs.getInt('offset') ?? 0);
   String date = (prefs.getString('date') ?? '');
   int increase =
       (prefs.getInt('increase') ?? roundDecimal((goalSteps / 14).floor()));
-  return [steps, offset, date, increase];
+  return [goalSteps, offset, date, increase];
 }
