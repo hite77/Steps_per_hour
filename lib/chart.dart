@@ -64,6 +64,7 @@ class ChartState extends State<Chart> {
         });
   }
 
+  //todo: return a class with these values, so the names will be used.
   AddElements(data, weightMonth, lowest, highest) {
     jsonDecode(weightMonth)['weight'].forEach((weight) {
       if (weight['weight'].toDouble() > highest) {
