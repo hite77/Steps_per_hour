@@ -14,12 +14,14 @@ class ChartState extends State<Chart> {
   int months = 6;
   double current = 0.0;
 
+  final dbHelper = DatabaseHelper.instance;
+
   /// Creates a [TimeSeriesChart] with sample data and no transition.
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<dynamic>(
-        future: _loadWeightData(),
+        future: accessTokenAndLoadWeightData(dbHelper),
         builder: (context, AsyncSnapshot<dynamic> snapshot) {
           if (snapshot.hasData) {
             seriesList = snapshot.data;
@@ -77,6 +79,7 @@ class ChartState extends State<Chart> {
         );
   }
 
+//  test this function -- easy
   AddElements(data, weightMonth, lowest, highest, current) {
     jsonDecode(weightMonth)['weight'].forEach((weight) {
       if (weight['weight'].toDouble() > highest) {
@@ -92,7 +95,8 @@ class ChartState extends State<Chart> {
     return [lowest, highest, current];
   }
 
-  _request_data(accessToken, dbHelper, startDate, endDate) async {
+//  todo: test this by mocking dbHelper, and also mocking either http, or fetch_weights_from_fitbit
+  requestData(accessToken, dbHelper, startDate, endDate) async {
     var entries = await dbHelper
         .queryRows("${startDate.month}.${startDate.day}.${startDate.year}");
     if (entries.length == 1) {
@@ -136,19 +140,22 @@ class ChartState extends State<Chart> {
   }
 
   Future<List<charts.Series<TimeSeriesWeight, DateTime>>>
-      _loadWeightData() async {
-    var data = <TimeSeriesWeight>[];
+      accessTokenAndLoadWeightData(dbHelper) async {
+    final String accessToken = await getTokens();
+    return await loadWeightData(dbHelper, accessToken);
+  }
 
-    final dbHelper = DatabaseHelper.instance;
+//  todo: this function needs to be tested most likely pull out the dbHelper as a param
+  Future<List<charts.Series<TimeSeriesWeight, DateTime>>> loadWeightData(
+      dbHelper, String accessToken) async {
+    var data = <TimeSeriesWeight>[];
 
     await dbHelper.deleteOld();
 
-    final String accessToken = await getTokens();
-
     DateTime now = DateTime.now();
 
-    for (var i = months; i > 1; i = i - 1) {
-      var weightMonth = await _request_data(
+    for (var i = months; i > 0; i = i - 1) {
+      var weightMonth = await requestData(
           accessToken,
           dbHelper,
           new DateTime(now.year, now.month - i, 1),
@@ -158,7 +165,7 @@ class ChartState extends State<Chart> {
       highest = extremes[1];
     }
 
-    var currentMonth = await _request_data(
+    var currentMonth = await requestData(
         accessToken,
         dbHelper,
         new DateTime(now.year, now.month, 1),

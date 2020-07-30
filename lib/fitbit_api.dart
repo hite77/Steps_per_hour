@@ -102,6 +102,7 @@ Future<String> getSteps() async {
   return steps;
 }
 
+//todo: put in a class so I can mock this?
 fetch_weights_from_fitbit(startDate, endDate, accessToken) async {
   var combinedHeader = new HashMap<String, String>();
   combinedHeader['Authorization'] = 'Bearer ' + accessToken;
