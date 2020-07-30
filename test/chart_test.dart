@@ -38,6 +38,13 @@ verifyQueryRows(monthsago) {
       .queryRows("${startDate.month}.${startDate.day}.${startDate.year}"));
 }
 
+verifyNeverQueryRows(monthsago) {
+  DateTime now = DateTime.now();
+  var startDate = new DateTime(now.year, now.month - monthsago, 1);
+  verifyNever(dbHelper
+      .queryRows("${startDate.month}.${startDate.day}.${startDate.year}"));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -89,5 +96,156 @@ void main() {
     verifyQueryRows(6);
   });
 
-  // test for deleteOld
+  test("loadWeightData will request current months of data is set to 0",
+      () async {
+    chartState.months = 0;
+
+    DateTime now = DateTime.now();
+
+    setupDataForMonth(now, 0);
+
+    await chartState.loadWeightData(dbHelper, 'accessToken');
+
+    verifyQueryRows(0);
+    verifyNeverQueryRows(1);
+    verifyNeverQueryRows(2);
+    verifyNeverQueryRows(3);
+    verifyNeverQueryRows(4);
+    verifyNeverQueryRows(5);
+    verifyNeverQueryRows(6);
+  });
+
+  test("loadWeightData will request current months of data is set to 1",
+      () async {
+    chartState.months = 1;
+
+    DateTime now = DateTime.now();
+
+    setupDataForMonth(now, 0);
+    setupDataForMonth(now, 1);
+
+    await chartState.loadWeightData(dbHelper, 'accessToken');
+
+    verifyQueryRows(0);
+    verifyQueryRows(1);
+    verifyNeverQueryRows(2);
+    verifyNeverQueryRows(3);
+    verifyNeverQueryRows(4);
+    verifyNeverQueryRows(5);
+    verifyNeverQueryRows(6);
+  });
+
+  test("loadWeightData will request current months of data is set to 2",
+      () async {
+    chartState.months = 2;
+
+    DateTime now = DateTime.now();
+
+    setupDataForMonth(now, 0);
+    setupDataForMonth(now, 1);
+    setupDataForMonth(now, 2);
+
+    await chartState.loadWeightData(dbHelper, 'accessToken');
+
+    verifyQueryRows(0);
+    verifyQueryRows(1);
+    verifyQueryRows(2);
+    verifyNeverQueryRows(3);
+    verifyNeverQueryRows(4);
+    verifyNeverQueryRows(5);
+    verifyNeverQueryRows(6);
+  });
+
+  test("loadWeightData will call delete old", () async {
+    await chartState.loadWeightData(dbHelper, 'accessToken');
+
+    verify(dbHelper.deleteOld());
+  });
+
+  test("Add Elements Adds Data", () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.45, "date": "2020-01-10"}
+      ]
+    });
+    var data = <TimeSeriesWeight>[];
+
+    chartState.AddElements(data, weightMonth, 0, 0);
+
+    expect(data[0].date, DateTime.parse("2020-01-10"));
+    expect(data[0].weight, 184.45);
+  });
+
+  test("Add elements updates Current to be latest", () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.45, "date": "2020-01-10"},
+        {"weight": 180.45, "date": "2020-01-11"},
+        {"weight": 182.43, "date": "2020-01-12"},
+        {"weight": 190.23, "date": "2020-01-13"},
+        {"weight": 181.23, "date": "2020-01-14"}
+      ]
+    });
+    var values = chartState.AddElements([], weightMonth, 0, 0);
+    var current = values[2];
+
+    expect(current, 181.23);
+  });
+
+  test("Add elements updates Highest to be highest", () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.45, "date": "2020-01-10"},
+        {"weight": 180.45, "date": "2020-01-11"},
+        {"weight": 182.43, "date": "2020-01-12"},
+        {"weight": 190.23, "date": "2020-01-13"},
+        {"weight": 181.23, "date": "2020-01-14"}
+      ]
+    });
+    var values = chartState.AddElements([], weightMonth, 0, 0);
+    var highest = values[1];
+
+    expect(highest, 190.23);
+  });
+
+//  todo: write test about really low weight from before
+
+  test(
+      "Add elements updates highest to be highest, keeps a high from previous month",
+      () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.45, "date": "2020-01-10"},
+        {"weight": 180.45, "date": "2020-01-11"},
+        {"weight": 182.43, "date": "2020-01-12"},
+        {"weight": 190.23, "date": "2020-01-13"},
+        {"weight": 181.23, "date": "2020-01-14"}
+      ]
+    });
+    var firstweight = jsonDecode(weightMonth)['weight'][0]['weight'];
+    var reallyhighweight = 500;
+    var values =
+        chartState.AddElements([], weightMonth, firstweight, reallyhighweight);
+    var highest = values[1];
+
+    expect(highest, reallyhighweight);
+  });
+
+  test("Add elements updates lowest to be lowest", () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.45, "date": "2020-01-10"},
+        {"weight": 180.45, "date": "2020-01-11"},
+        {"weight": 182.43, "date": "2020-01-12"},
+        {"weight": 190.23, "date": "2020-01-13"},
+        {"weight": 181.23, "date": "2020-01-14"}
+      ]
+    });
+    var firstweight = jsonDecode(weightMonth)['weight'][0]['weight'];
+    var values =
+        chartState.AddElements([], weightMonth, firstweight, firstweight);
+    var lowest = values[0];
+
+    expect(lowest, 180.45);
+  });
 }
