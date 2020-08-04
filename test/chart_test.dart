@@ -162,7 +162,7 @@ void main() {
     verify(dbHelper.deleteOld());
   });
 
-  test("Add Elements Adds Data", () async {
+  test("Add Elements Adds Data", () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"}
@@ -176,7 +176,7 @@ void main() {
     expect(data[0].weight, 184.45);
   });
 
-  test("Add elements updates Current to be latest", () async {
+  test("Add elements updates Current to be latest", () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"},
@@ -192,7 +192,7 @@ void main() {
     expect(current, 181.23);
   });
 
-  test("Add elements updates Highest to be highest", () async {
+  test("Add elements updates Highest to be highest", () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"},
@@ -210,7 +210,7 @@ void main() {
 
   test(
       "Add elements updates lowest to be lowest, keeps a low from previous month",
-      () async {
+      () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"},
@@ -250,7 +250,7 @@ void main() {
     expect(values[2], 184);
   });
 
-  test("Add elements handles int values", () async {
+  test("Add elements handles int values", () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184, "date": "2020-01-10"},
@@ -263,7 +263,7 @@ void main() {
 
   test(
       "Add elements updates highest to be highest, keeps a high from previous month",
-      () async {
+      () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"},
@@ -282,7 +282,7 @@ void main() {
     expect(highest, reallyhighweight);
   });
 
-  test("Add elements updates lowest to be lowest", () async {
+  test("Add elements updates lowest to be lowest", () {
     final weightMonth = jsonEncode({
       "weight": [
         {"weight": 184.45, "date": "2020-01-10"},

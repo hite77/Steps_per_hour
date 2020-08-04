@@ -216,7 +216,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                       icon: Icon(Icons.refresh),
                       onPressed: () async {
-                        currentSteps = await getSteps();
+                        currentSteps = await FitbitApi().getSteps();
                         steps = int.parse(currentSteps);
                         setState(() {});
                       }),
@@ -237,7 +237,7 @@ class StepsPerHourState extends State<StepsPerHour> {
   }
 
   Future recalculateStepIncrease() async {
-    currentSteps = await getSteps();
+    currentSteps = await FitbitApi().getSteps();
     steps = int.parse(currentSteps);
     int hour = clock.now().hour;
     int originalIncrease = roundDecimal((goalSteps / 14).floor());

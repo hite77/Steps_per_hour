@@ -93,8 +93,8 @@ class ChartState extends State<Chart> {
         return entries[0]['data'];
       }
       // need to fetch data and update it out....
-      final dataToInsert =
-          await fetch_weights_from_fitbit(startDate, endDate, accessToken);
+      final dataToInsert = await FitbitApi()
+          .fetch_weights_from_fitbit(startDate, endDate, accessToken);
       Map<String, dynamic> row = {
         DatabaseHelper.columnId: entries[0]['id'],
         DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
@@ -110,8 +110,8 @@ class ChartState extends State<Chart> {
     }
 
     // need to fetch data and insert.....
-    final dataToInsert =
-        await fetch_weights_from_fitbit(startDate, endDate, accessToken);
+    final dataToInsert = await FitbitApi()
+        .fetch_weights_from_fitbit(startDate, endDate, accessToken);
     Map<String, dynamic> row = {
       DatabaseHelper.columnData: dataToInsert,
       DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
@@ -128,7 +128,7 @@ class ChartState extends State<Chart> {
 
   Future<List<charts.Series<TimeSeriesWeight, DateTime>>>
       accessTokenAndLoadWeightData(dbHelper) async {
-    final String accessToken = await getTokens();
+    final String accessToken = await FitbitApi().getTokens();
     return await loadWeightData(dbHelper, accessToken);
   }
 
