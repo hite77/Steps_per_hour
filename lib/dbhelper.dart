@@ -49,7 +49,8 @@ class DatabaseHelper {
 
   Future<int> insert(Weight weight) async {
     Database db = await instance.database;
-    return await db.insert(table,
+    return await db.insert(
+      table,
       weight.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -58,6 +59,13 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> queryAllRows() async {
     Database db = await instance.database;
     return await db.query(table);
+  }
+
+  deleteAll() async {
+    var dbEntries = await queryAllRows();
+    dbEntries.forEach((element) async {
+      await delete(element['id']);
+    });
   }
 
   deleteOld() async {
@@ -73,22 +81,19 @@ class DatabaseHelper {
   }
 
   Future<List<Map<String, dynamic>>> queryRows(date) async {
-   Database db = await instance.database;
-   return await db.query(table, where: "$columnStart LIKE '%$date%'");
- }
-
+    Database db = await instance.database;
+    return await db.query(table, where: "$columnStart LIKE '%$date%'");
+  }
 
   Future<int> update(Weight weight) async {
     Database db = await instance.database;
     int id = weight.toMap()['id'];
-    return await db.update(table, weight.toMap(), where: '$columnId = ?', whereArgs: [id]);
+    return await db
+        .update(table, weight.toMap(), where: '$columnId = ?', whereArgs: [id]);
   }
 
   Future<int> delete(int id) async {
     Database db = await instance.database;
-    return await db.delete(table,
-      where: '$columnId = ?',
-      whereArgs: [id]
-    );
+    return await db.delete(table, where: '$columnId = ?', whereArgs: [id]);
   }
 }

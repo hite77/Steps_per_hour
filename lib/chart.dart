@@ -67,14 +67,16 @@ class ChartState extends State<Chart> {
   //todo: return a class with these values, so the names will be used.
   AddElements(data, weightMonth, lowest, highest) {
     jsonDecode(weightMonth)['weight'].forEach((weight) {
-      if (weight['weight'].toDouble() > highest) {
-        highest = weight['weight'].toDouble();
-      } else if (weight['weight'].toDouble() < lowest) {
-        lowest = weight['weight'].toDouble();
+      double weight_double = weight['weight'].toDouble();
+      if (weight_double > highest) {
+        highest = weight_double;
       }
-      current = weight['weight'];
-      data.add(new TimeSeriesWeight(
-          DateTime.parse(weight['date']), weight['weight'].toDouble()));
+      if (weight_double < lowest) {
+        lowest = weight_double;
+      }
+      current = weight_double;
+      data.add(
+          new TimeSeriesWeight(DateTime.parse(weight['date']), weight_double));
     });
 
     return [lowest, highest, current];

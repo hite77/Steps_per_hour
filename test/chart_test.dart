@@ -229,6 +229,38 @@ void main() {
     expect(lowest, reallylowweight);
   });
 
+  test("Add elements updates highest and lowest together", () {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184.5, "date": "2020-01-10"},
+      ]
+    });
+    var values = chartState.AddElements([], weightMonth, 1000, 0);
+    expect(values[0], 184.5);
+    expect(values[1], 184.5);
+  });
+
+  test("Add elements updates current", () {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184, "date": "2020-01-10"},
+      ]
+    });
+    var values = chartState.AddElements([], weightMonth, 1000, 0);
+    expect(values[2], 184);
+  });
+
+  test("Add elements handles int values", () async {
+    final weightMonth = jsonEncode({
+      "weight": [
+        {"weight": 184, "date": "2020-01-10"},
+      ]
+    });
+    var data = [];
+    chartState.AddElements(data, weightMonth, 0, 0);
+    expect(data[0].weight, 184);
+  });
+
   test(
       "Add elements updates highest to be highest, keeps a high from previous month",
       () async {
