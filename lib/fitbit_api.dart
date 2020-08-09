@@ -11,10 +11,10 @@ class FitbitApi {
   http.Client client;
   FlutterWebAuthWrapper flutterWebAuth;
   token tokenPersist;
-  //todo make them all optional and remove passing them in for real code.
-  FitbitApi(http.Client c, FlutterWebAuthWrapper auth, [token t]) {
-    client = c;
-    flutterWebAuth = auth;
+
+  FitbitApi([http.Client c, FlutterWebAuthWrapper auth, token t]) {
+    client = c ??= http.Client();
+    flutterWebAuth = auth ??= FlutterWebAuthWrapper();
     tokenPersist = t ??= token();
   }
 
@@ -82,7 +82,6 @@ class FitbitApi {
 
       if (refresh.statusCode != 200) {
         // try one more time
-        authorizeAndGetTokens(secret, base64Str);
         List tokens = await authorizeAndGetTokens(secret, base64Str);
         accessToken = tokens[0];
         refreshToken = tokens[1];
@@ -97,7 +96,7 @@ class FitbitApi {
       } else {
         accessToken = jsonDecode(refresh.body)['access_token'];
         refreshToken = jsonDecode(refresh.body)['refresh_token'];
-        token().persistTokens(accessToken, refreshToken);
+        tokenPersist.persistTokens(accessToken, refreshToken);
       }
     }
     return accessToken;
@@ -112,7 +111,6 @@ class FitbitApi {
     return steps;
   }
 
-//todo: put in a class so I can mock this?
   fetch_weights_from_fitbit(startDate, endDate, accessToken) async {
     var combinedHeader = new HashMap<String, String>();
     combinedHeader['Authorization'] = 'Bearer ' + accessToken;
