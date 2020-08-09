@@ -1,13 +1,20 @@
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stepsperhour/secret.dart';
 import 'package:stepsperhour/token.dart';
+import 'package:stepsperhour/utilities.dart';
 
 class FitbitApi {
+  http.Client client;
+  FlutterWebAuthWrapper flutterWebAuth;
+  FitbitApi(http.Client c, FlutterWebAuthWrapper auth) {
+    client = c;
+    flutterWebAuth = auth;
+  }
+
   Future<List> authorizeAndGetTokens(Secret secret, String base64Str) async {
     final callbackUrlScheme = 'com.test.app://oauth2redirect';
 
@@ -19,13 +26,12 @@ class FitbitApi {
       'expires_in': '604800'
     });
 
-    final result = await FlutterWebAuth.authenticate(
-        url: Uri.decodeComponent(url.toString()),
-        callbackUrlScheme: 'com.test.app');
+    final result = await flutterWebAuth.authenticate(
+        Uri.decodeComponent(url.toString()), 'com.test.app');
     final code = result.split('?code=')[1].split('#_=_')[0];
 
     final tokens =
-        await http.post("https://api.fitbit.com/oauth2/token", body: {
+        await client.post("https://api.fitbit.com/oauth2/token", body: {
       'client_id': secret.clientId,
       'grant_type': 'authorization_code',
       'redirect_uri': '$callbackUrlScheme',
@@ -33,11 +39,10 @@ class FitbitApi {
     }, headers: {
       'Authorization': 'Basic ' + base64Str
     });
-
     String accessToken = jsonDecode(tokens.body)['access_token'];
     String refreshToken = jsonDecode(tokens.body)['refresh_token'];
 
-    persistTokens(accessToken, refreshToken);
+//    persistTokens(accessToken, refreshToken);
 
     return [accessToken, refreshToken];
   }
@@ -59,12 +64,12 @@ class FitbitApi {
       refreshToken = tokens[1];
     }
 
-    var activity = await http.get(
+    var activity = await client.get(
         'https://api.fitbit.com/1/user/-/activities/date/today.json',
         headers: {'Authorization': 'Bearer ' + accessToken});
     if (activity.statusCode != 200) {
       final refresh =
-          await http.post("https://api.fitbit.com/oauth2/token", body: {
+          await client.post("https://api.fitbit.com/oauth2/token", body: {
         'client_id': secret.clientId,
         'grant_type': 'refresh_token',
         'refresh_token': refreshToken,
@@ -78,7 +83,7 @@ class FitbitApi {
         List tokens = await authorizeAndGetTokens(secret, base64Str);
         accessToken = tokens[0];
         refreshToken = tokens[1];
-        var activity = await http.get(
+        var activity = await client.get(
             'https://api.fitbit.com/1/user/-/activities/date/today.json',
             headers: {'Authorization': 'Bearer ' + accessToken});
         if (activity.statusCode != 200) {
@@ -97,7 +102,7 @@ class FitbitApi {
 
   Future<String> getSteps() async {
     final String accessToken = await getTokens();
-    var activity = await http.get(
+    var activity = await client.get(
         'https://api.fitbit.com/1/user/-/activities/date/today.json',
         headers: {'Authorization': 'Bearer ' + accessToken});
     String steps = jsonDecode(activity.body)['summary']['steps'].toString();
@@ -111,7 +116,7 @@ class FitbitApi {
     combinedHeader['Accept-Language'] = 'en_US';
     combinedHeader['Accept-Local'] = 'en_US';
 
-    var weightMonth = await http.get(
+    var weightMonth = await client.get(
         "https://api.fitbit.com/1/user/-/body/log/weight/date/${startDate.year}-${(startDate.month < 10) ? "0${startDate.month}" : startDate.month}-${(startDate.day < 10) ? "0${startDate.day}" : startDate.day}/${endDate.year}-${(endDate.month < 10) ? "0${endDate.month}" : endDate.month}-${(endDate.day < 10) ? "0${endDate.day}" : endDate.day}.json",
         headers: combinedHeader);
 

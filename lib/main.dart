@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:stepsperhour/chart.dart';
 import 'package:stepsperhour/fitbit_api.dart';
 import 'package:stepsperhour/token.dart';
@@ -216,7 +217,9 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                       icon: Icon(Icons.refresh),
                       onPressed: () async {
-                        currentSteps = await FitbitApi().getSteps();
+                        currentSteps = await FitbitApi(
+                                http.Client(), FlutterWebAuthWrapper())
+                            .getSteps();
                         steps = int.parse(currentSteps);
                         setState(() {});
                       }),
@@ -237,7 +240,8 @@ class StepsPerHourState extends State<StepsPerHour> {
   }
 
   Future recalculateStepIncrease() async {
-    currentSteps = await FitbitApi().getSteps();
+    currentSteps =
+        await FitbitApi(http.Client(), FlutterWebAuthWrapper()).getSteps();
     steps = int.parse(currentSteps);
     int hour = clock.now().hour;
     int originalIncrease = roundDecimal((goalSteps / 14).floor());

@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:stepsperhour/dbhelper.dart';
 import 'package:stepsperhour/fitbit_api.dart';
+import 'package:stepsperhour/utilities.dart';
 import 'package:stepsperhour/weight.dart';
 
 class ChartState extends State<Chart> {
@@ -93,8 +95,9 @@ class ChartState extends State<Chart> {
         return entries[0]['data'];
       }
       // need to fetch data and update it out....
-      final dataToInsert = await FitbitApi()
-          .fetch_weights_from_fitbit(startDate, endDate, accessToken);
+      final dataToInsert =
+          await FitbitApi(http.Client(), FlutterWebAuthWrapper())
+              .fetch_weights_from_fitbit(startDate, endDate, accessToken);
       Map<String, dynamic> row = {
         DatabaseHelper.columnId: entries[0]['id'],
         DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,
@@ -110,7 +113,7 @@ class ChartState extends State<Chart> {
     }
 
     // need to fetch data and insert.....
-    final dataToInsert = await FitbitApi()
+    final dataToInsert = await FitbitApi(http.Client(), FlutterWebAuthWrapper())
         .fetch_weights_from_fitbit(startDate, endDate, accessToken);
     Map<String, dynamic> row = {
       DatabaseHelper.columnData: dataToInsert,
@@ -128,7 +131,8 @@ class ChartState extends State<Chart> {
 
   Future<List<charts.Series<TimeSeriesWeight, DateTime>>>
       accessTokenAndLoadWeightData(dbHelper) async {
-    final String accessToken = await FitbitApi().getTokens();
+    final String accessToken =
+        await FitbitApi(http.Client(), FlutterWebAuthWrapper()).getTokens();
     return await loadWeightData(dbHelper, accessToken);
   }
 
