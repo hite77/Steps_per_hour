@@ -83,7 +83,7 @@ class StepsPerHourState extends State<StepsPerHour> {
       dateString = today;
       offset = 0;
       increase = roundDecimal((goalSteps / 14).floor());
-      write_settings(goalSteps, offset, dateString, increase);
+      token().write_settings(goalSteps, offset, dateString, increase);
     }
 
     var hour = clock.now().hour;
@@ -159,7 +159,7 @@ class StepsPerHourState extends State<StepsPerHour> {
               goalSteps += 1000;
               offset = 0;
               increase = roundDecimal((goalSteps / 14).floor());
-              write_settings(goalSteps, offset, dateString, increase);
+              token().write_settings(goalSteps, offset, dateString, increase);
               setState(() {});
             }),
         Expanded(
@@ -175,7 +175,7 @@ class StepsPerHourState extends State<StepsPerHour> {
               goalSteps -= 1000;
               offset = 0;
               increase = roundDecimal((goalSteps / 14).floor());
-              write_settings(goalSteps, offset, dateString, increase);
+              token().write_settings(goalSteps, offset, dateString, increase);
               setState(() {});
             }),
       ],
@@ -197,7 +197,7 @@ class StepsPerHourState extends State<StepsPerHour> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<dynamic>(
-      future: pullGoalStepsFromPreferences(),
+      future: token().pullGoalStepsFromPreferences(),
       builder: (context, AsyncSnapshot<dynamic> snapshot) {
         if (snapshot.hasData) {
           return Scaffold(
@@ -207,7 +207,7 @@ class StepsPerHourState extends State<StepsPerHour> {
                   IconButton(
                     icon: Icon(Icons.restore),
                     onPressed: () async {
-                      write_settings(goalSteps, 0, dateString,
+                      token().write_settings(goalSteps, 0, dateString,
                           roundDecimal((goalSteps / 14).floor()));
                       setState(() {
                         offset = 0;
@@ -255,7 +255,7 @@ class StepsPerHourState extends State<StepsPerHour> {
       offset = steps - increase * (hour - 6);
     }
 
-    write_settings(goalSteps, offset, dateString, increase);
+    token().write_settings(goalSteps, offset, dateString, increase);
   }
 }
 

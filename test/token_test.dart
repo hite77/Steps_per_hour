@@ -12,7 +12,7 @@ void main() {
     var expectedRefreshToken = 'refresh_token';
     SharedPreferences pref = await SharedPreferences.getInstance();
 
-    await persistTokens(expectedAccessToken, expectedRefreshToken);
+    await token().persistTokens(expectedAccessToken, expectedRefreshToken);
 
     expect(pref.getString('accessToken'), expectedAccessToken);
     expect(pref.getString('refreshToken'), expectedRefreshToken);
@@ -27,7 +27,7 @@ void main() {
     int increase = 152;
     SharedPreferences pref = await SharedPreferences.getInstance();
 
-    await write_settings(steps, offset, date, increase);
+    await token().write_settings(steps, offset, date, increase);
 
     expect(pref.getInt('goalsteps'), steps);
     expect(pref.getInt('offset'), offset);
@@ -40,7 +40,7 @@ void main() {
     SharedPreferences.setMockInitialValues(
         {'flutter.goalsteps': storedGoalSteps});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final steps = data[0];
     expect(steps, storedGoalSteps);
@@ -49,7 +49,7 @@ void main() {
   test("returns goalStepsDefault for steps if not stored", () async {
     SharedPreferences.setMockInitialValues({});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final steps = data[0];
     expect(steps, goalStepsDefault);
@@ -59,7 +59,7 @@ void main() {
     final storedOffset = 11;
     SharedPreferences.setMockInitialValues({'flutter.offset': storedOffset});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final offset = data[1];
     expect(offset, storedOffset);
@@ -68,7 +68,7 @@ void main() {
   test("returns zero for offset if not stored", () async {
     SharedPreferences.setMockInitialValues({});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final offset = data[1];
     expect(offset, 0);
@@ -78,7 +78,7 @@ void main() {
     final storedDate = 'Some date';
     SharedPreferences.setMockInitialValues({'flutter.date': storedDate});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final date = data[2];
     expect(date, storedDate);
@@ -87,7 +87,7 @@ void main() {
   test("returns empty string for date if not stored", () async {
     SharedPreferences.setMockInitialValues({});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final date = data[2];
     expect(date, '');
@@ -98,7 +98,7 @@ void main() {
     SharedPreferences.setMockInitialValues(
         {'flutter.increase': storedIncrease});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final increase = data[3];
     expect(increase, storedIncrease);
@@ -112,7 +112,7 @@ void main() {
 
     SharedPreferences.setMockInitialValues({'flutter.goalsteps': goalsteps});
 
-    List<dynamic> data = await pullGoalStepsFromPreferences();
+    List<dynamic> data = await token().pullGoalStepsFromPreferences();
 
     final increase = data[3];
     expect(increase, calculatedIncrease);

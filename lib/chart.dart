@@ -113,8 +113,10 @@ class ChartState extends State<Chart> {
     }
 
     // need to fetch data and insert.....
-    final dataToInsert = await FitbitApi(http.Client(), FlutterWebAuthWrapper())
-        .fetch_weights_from_fitbit(startDate, endDate, accessToken);
+    final dataToInsert = await FitbitApi(
+      http.Client(),
+      FlutterWebAuthWrapper(),
+    ).fetch_weights_from_fitbit(startDate, endDate, accessToken);
     Map<String, dynamic> row = {
       DatabaseHelper.columnData: dataToInsert,
       DatabaseHelper.columnAge: endDate.millisecondsSinceEpoch,

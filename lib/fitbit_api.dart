@@ -10,9 +10,12 @@ import 'package:stepsperhour/utilities.dart';
 class FitbitApi {
   http.Client client;
   FlutterWebAuthWrapper flutterWebAuth;
-  FitbitApi(http.Client c, FlutterWebAuthWrapper auth) {
+  token tokenPersist;
+  //todo make them all optional and remove passing them in for real code.
+  FitbitApi(http.Client c, FlutterWebAuthWrapper auth, [token t]) {
     client = c;
     flutterWebAuth = auth;
+    tokenPersist = t ??= token();
   }
 
   Future<List> authorizeAndGetTokens(Secret secret, String base64Str) async {
@@ -42,7 +45,7 @@ class FitbitApi {
     String accessToken = jsonDecode(tokens.body)['access_token'];
     String refreshToken = jsonDecode(tokens.body)['refresh_token'];
 
-//    persistTokens(accessToken, refreshToken);
+    tokenPersist.persistTokens(accessToken, refreshToken);
 
     return [accessToken, refreshToken];
   }
@@ -94,7 +97,7 @@ class FitbitApi {
       } else {
         accessToken = jsonDecode(refresh.body)['access_token'];
         refreshToken = jsonDecode(refresh.body)['refresh_token'];
-        persistTokens(accessToken, refreshToken);
+        token().persistTokens(accessToken, refreshToken);
       }
     }
     return accessToken;
