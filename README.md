@@ -1,4 +1,12 @@
-# stepsperhour
+# ,---.   ,--.                                                    ,--.                            
+#'   .-',-'  '-. ,---.  ,---.  ,---.      ,---.  ,---. ,--.--.    |  ,---.  ,---. ,--.,--.,--.--. 
+#`.  `-.'-.  .-'| .-. :| .-. |(  .-'     | .-. || .-. :|  .--'    |  .-.  || .-. ||  ||  ||  .--' 
+#.-'    | |  |  \   --.| '-' '.-'  `)    | '-' '\   --.|  |       |  | |  |' '-' ''  ''  '|  |    
+#`-----'  `--'   `----'|  |-' `----'     |  |-'  `----'`--'       `--' `--' `---'  `----' `--'    
+#                      `--'              `--'                                                     
+
+Link to fancy font.... 
+https://patorjk.com/software/taag/#p=display&f=Soft&t=Steps%20per%20hour
 
 Displays goal steps per hour, your current steps for the day from fitbit.
 
